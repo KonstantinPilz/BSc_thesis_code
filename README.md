@@ -60,6 +60,16 @@ Choose a self-explaining name for your project.
 ## Description
 Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
 
+This repository is to store and share all source code that is generated in the frame of the project.
+The BSc thesis will be part of another repository _(add the link here when has been set up)_.
+
+Documents that are not under version control, e.g. publications, presentations, some data, are shared in the UFZ Nextcloud folder:
+https://nc.ufz.de/apps/files/?dir=/Cloud/2022_MLseq_KP
+
+@EVE you find links to the used in-house data and the data produced during this project: 
+`/data/bioinf/projects/data/2022_MLseq_KP`
+
+
 ## Badges
 On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
 
