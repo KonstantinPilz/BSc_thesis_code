@@ -67,6 +67,8 @@ data.testS4 = DESeqDataSetFromMatrix(countData = data.test, colData = classts,
 #                                          repeats = 2, classProbs = TRUE))
 #  show(fit)
 
+
+#K# I think this is to bring it closer to array data
 ## ----eval = FALSE, echo = TRUE------------------------------------------------
 #  set.seed(2128)
 #
@@ -76,7 +78,7 @@ data.testS4 = DESeqDataSetFromMatrix(countData = data.test, colData = classts,
 #                   control = voomControl(tuneLength = 20))
 #
 #  trained(fit)  ## Trained model summary
-
+#
 ## ----Optimizing_model_parameters_example, eval = TRUE, echo = TRUE------------
 set.seed(2128)
 
