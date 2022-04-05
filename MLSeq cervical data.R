@@ -1,10 +1,4 @@
-#installing the MLSeq package
-
-
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install(version = "3.10")
-BiocManager::install("MLSeq")
+#K#installing the MLSeq package: use Conda/Mamba environment for all required packages
 
 
 ## ----knitr_options, echo=FALSE, results="hide", warning=FALSE-----------------
@@ -26,12 +20,15 @@ library(caret)
 filepath <- system.file("/home/pilz/data/MLSeq_original_data/cervical.rda", package = "MLSeq")
 
 ## ----read_cervical_data-------------------------------------------------------
-cervical <- read.table(filepath, header=TRUE)
+#K# since I have the data as .rda I need to import them in a differnt way
+load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
+#cervical <- read.table(filepath, header=TRUE)
 
 ## ----head_cervical------------------------------------------------------------
 head(cervical[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
 
 ## ----define_class_labels------------------------------------------------------
+#K# to distinguish treated/control
 class <- DataFrame(condition = factor(rep(c("N","T"), c(29, 29))))
 class
 
