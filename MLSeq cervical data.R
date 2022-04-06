@@ -29,61 +29,104 @@ head(cervical[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
 
 ## ----define_class_labels------------------------------------------------------
 #K# to distinguish treated/control
+#K# class-dependence is stored in a DataFrame object by S4Vectors
 class <- DataFrame(condition = factor(rep(c("N","T"), c(29, 29))))
 class
 
 ## ----data_splitting-----------------------------------------------------------
+#K# Since we want to build a classification model, we need training data.
+#K# After training we need more data to asess the performance
+#?# Is the model predicting whether a given sample is treatment or control?
+#?# How would this information be of use? Is the important question not which genes are affected?
+
+#K# It is important to split the data in a good ratio. Default is 70% training.
+#K# If we set it to e.g. 90% for this small sample, there would be only 6 samples
+#K# left for testing. A single unit missclassification, which the model is
+#K# sensitive to would result in an accuracy loss of 17%
+
 library(DESeq2)
 
 set.seed(2128)
+#K# This seed determines how the samples are randomized -> For reproductibility use same seed
+#K# In particular it determines the variable ind
 
 # We do not perform a differential expression analysis to select differentially
 # expressed genes. However, in practice, DE analysis might be performed before
 # fitting classifiers. Here, we selected top 100 features having the highest
 # gene-wise variances in order to decrease computational cost.
+#K# I don't understand why we would do DE before. Why would we need MLSeq if
+#K# we already know which genes are affected?
+
 vars <- sort(apply(cervical, 1, var, na.rm = TRUE), decreasing = TRUE)
+#K# sorting by variance. Highest: 747,902,689 Lowest: 4
+#?# Can we do this before normalization? Is the variance consistent troughout normalization?
 data <- cervical[names(vars)[1:100], ]
-nTest <- ceiling(ncol(data) * 0.3)
-ind <- sample(ncol(data), nTest, FALSE)
+#K# I think we are now taking the top 100 genes that have the highest variance
+#K# Which we probably take as predictor for which genes are affected.
+nTest <- ceiling(ncol(data) * 0.3) #K# ncol: number of rows in an array
+ind <- sample(ncol(data), nTest, FALSE) #K# This is randomizing the samples
 
 # Minimum count is set to 1 in order to prevent 0 division problem within
 # classification models.
-data.train <- as.matrix(data[ ,-ind] + 1)
-data.test <- as.matrix(data[ ,ind] + 1)
+data.train <- as.matrix(data[ ,-ind] + 1) #K# ind is a collection of nTest samples
+#K# training data: all data except for ind -> 70% -> 40 samples
+data.test <- as.matrix(data[ ,ind] + 1)#K# all lines (genes) of the matrix, but only the columns specified in ind
+#K# test data: the remaining data -> ind -> 30% -> 18 samples
+
+#?# Why this class type?
+#K# I think it contains the classification of each sample
 classtr <- DataFrame(condition = class[-ind, ])
 classts <- DataFrame(condition = class[ind, ])
 
 ## ----DESeqDataSets------------------------------------------------------------
+#K# These work as input for MLSeq
 data.trainS4 = DESeqDataSetFromMatrix(countData = data.train, colData = classtr,
                                       design = formula(~condition))
+#K# This element contains: the date for 70% of samples; the class of each sample
 data.testS4 = DESeqDataSetFromMatrix(countData = data.test, colData = classts,
                                      design = formula(~condition))
 
+###############################################################################
+#K### END OF PREPERATION ### NOW MODEL WILL BE TRAINED ########################
+###############################################################################
+
+#K# First, Data is normalized using one of four methods
+#K# Then, the model is trained using one of 93 methods (use >availableMethods() to see them)
+#K# MLSeq has a SINGLE FUNCTION for model building and evaluation
+#K# >classify
+
+#K# 1.
+#K# deseq-rlog: Normalization with deseq median ratio method.
+#K# Regularized logarithmic transformaiton is applied to normalized data
 ## ----mwe_limitations_on_continuous_classifiers, eval = FALSE, message=FALSE----
 #  # Support Vector Machines with Radial Kernel
-#  fit <- classify(data = data.trainS4, method = "svmRadial",
+#  fit <- classify(data = data.trainS4, method = "svmRadial",#K# svmRadial is one of the 93 ML-Methods MLSeq offers
 #                   preProcessing = "deseq-rlog", ref = "T",
 #                   control = trainControl(method = "repeatedcv", number = 2,
 #                                          repeats = 2, classProbs = TRUE))
 #  show(fit)
 
-
+#K# 2.
 #K# I think this is to bring it closer to array data
 ## ----eval = FALSE, echo = TRUE------------------------------------------------
 #  set.seed(2128)
 #
 #  # Voom based Nearest Shrunken Centroids.
-#  fit <- classify(data = data.trainS4, method = "voomNSC",
+#  fit <- classify(data = data.trainS4, method = "voomNSC", #K# also a ML method
 #                   normalize = "deseq", ref = "T",
 #                   control = voomControl(tuneLength = 20))
 #
 #  trained(fit)  ## Trained model summary
 #
+
+#K# 3. (default)
 ## ----Optimizing_model_parameters_example, eval = TRUE, echo = TRUE------------
 set.seed(2128)
 
+#K# deseq-vst: Normalization is applied with deseq median ratio method.
+#K# Variance stabilizing transformation is applied to nromalized data.
 # Support vector machines with radial basis function kernel
-fit.svm <- classify(data = data.trainS4, method = "svmRadial",
+fit.svm <- classify(data = data.trainS4, method = "svmRadial", #K# the choosen ML method
                  preProcessing = "deseq-vst", ref = "T", tuneLength = 10,
                  control = trainControl(method = "repeatedcv", number = 5,
                                         repeats = 10, classProbs = TRUE))
@@ -92,12 +135,13 @@ show(fit.svm)
 
 ## ----fitted_model_svm---------------------------------------------------------
 trained(fit.svm)
-
+#K# Now it should be normalized.
 ## ----eval = FALSE-------------------------------------------------------------
 #  plot(fit.svm)
 
 ## ----fitted_model_svm_figure, echo = FALSE, results='hide'--------------------
 cairo_pdf(filename = "fitted_model_svm_figure.pdf", height = 5.5)
+#K# gives a graph with cost/ accuracy (Repeated Cross-Validation)
 plot(fit.svm)
 dev.off()
 
