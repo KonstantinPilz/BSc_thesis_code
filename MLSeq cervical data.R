@@ -61,6 +61,9 @@ vars <- sort(apply(cervical, 1, var, na.rm = TRUE), decreasing = TRUE)
 #K# sorting by variance. Highest: 747,902,689 Lowest: 4
 #?# Can we do this before normalization? Is the variance consistent troughout normalization?
 data <- cervical[names(vars)[1:100], ]
+
+head(data[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
+
 #K# I think we are now taking the top 100 genes that have the highest variance
 #K# Which we probably take as predictor for which genes are affected.
 nTest <- ceiling(ncol(data) * 0.3) #K# ncol: number of rows in an array
@@ -93,7 +96,7 @@ data.testS4 = DESeqDataSetFromMatrix(countData = data.test, colData = classts,
 #K# First, Data is normalized using one of four methods
 #K# Then, the model is trained using one of 93 methods (use >availableMethods() to see them)
 #K# MLSeq has a SINGLE FUNCTION for model building and evaluation
-#K# >classify
+#K# ___ >classify ___
 
 #K# 1.
 #K# deseq-rlog: Normalization with deseq median ratio method.
@@ -132,10 +135,11 @@ fit.svm <- classify(data = data.trainS4, method = "svmRadial", #K# the choosen M
                                         repeats = 10, classProbs = TRUE))
 
 show(fit.svm)
-
+#?# "The model were [sic] trained using 5-fold cross validation repeated 1ß times. The number of levels for tuning parameter is set to 10"
+#?# Does this mean, they did that for the paper or is this automatically done? (I think the former, since the data is presplit early on.)
 ## ----fitted_model_svm---------------------------------------------------------
 trained(fit.svm)
-#K# Now it should be normalized.
+#K# The evaluation of the trained model
 ## ----eval = FALSE-------------------------------------------------------------
 #  plot(fit.svm)
 
