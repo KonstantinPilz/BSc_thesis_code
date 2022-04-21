@@ -135,7 +135,7 @@ fit.svm <- classify(data = data.trainS4, method = "svmRadial", #K# the choosen M
                                         repeats = 10, classProbs = TRUE))
 
 show(fit.svm)
-#?# "The model were [sic] trained using 5-fold cross validation repeated 1ß times. The number of levels for tuning parameter is set to 10"
+#?# "The model were [sic] trained using 5-fold cross validation repeated 10 times. The number of levels for tuning parameter is set to 10"
 #?# Does this mean, they did that for the paper or is this automatically done? (I think the former, since the data is presplit early on.)
 ## ----fitted_model_svm---------------------------------------------------------
 trained(fit.svm)
@@ -283,6 +283,7 @@ if (length(best_in_sparsity) >= 2){
 
 ## -----------------------------------------------------------------------------
 selectedGenes(fit.voomNSC)
+#K# result: [1] "miR-143"  "miR-125b" ##########################################
 
 ## ----all_common_features, echo = FALSE----------------------------------------
 pam.final <- trained(fit.NSC)$finalModel   ## 'pamrtrained' object.
@@ -294,6 +295,7 @@ genes.plda2 <- selectedGenes(fit.plda2)
 genes.vnsc <- selectedGenes(fit.voomNSC)
 
 tmp.list <- list(genes.pam, genes.plda, genes.plda2, genes.vnsc)
+
 
 nn <- c(length(genes.pam), length(genes.plda), length(genes.plda2), length(genes.vnsc))
 ooo <- order(nn, decreasing = TRUE)
