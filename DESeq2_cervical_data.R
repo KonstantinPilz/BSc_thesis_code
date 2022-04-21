@@ -17,13 +17,19 @@ knitr::opts_chunk$set(tidy = FALSE,
 #K# ML Seq data: a count matrix that contains the number of reads mapped to each
 # transcript for each sample and class label information of samples in an S4
 # class DESeqDataSet
+## ----file_path_cervical-------------------------------------------------------
+filepath <- system.file("/home/pilz/data/MLSeq_original_data/cervical.rda", package = "MLSeq")
+
+## ----read_cervical_data-------------------------------------------------------
+#K# since I have the data as .rda I need to import them in a differnt way
+load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
 
 ## ----txiSetup-----------------------------------------------------------------
 library("tximport")
 library("readr")
 library("tximportData")
 dir <- system.file("extdata", package="tximportData")
-#K### If you have a count matrix jump to 85 ###
+
 samples <- read.table(file.path(dir,"samples.txt"), header=TRUE)
 head(samples)
 samples$condition <- factor(rep(c("A","B"),each=3))
