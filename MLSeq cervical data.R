@@ -301,6 +301,8 @@ nn <- c(length(genes.pam), length(genes.plda), length(genes.plda2), length(genes
 ooo <- order(nn, decreasing = TRUE)
 
 tmp.list <- tmp.list[ooo]
+#K# saving the list of genes
+capture.output(tmp.list, file="MLSeq cervical genes result.txt")
 
 common <- tmp.list[[1]]
 for (i in 2:(length(tmp.list))){

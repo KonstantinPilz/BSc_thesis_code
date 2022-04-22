@@ -92,8 +92,25 @@ all(rownames(coldata) == colnames(cts))
 
 ## ----matrixInput--------------------------------------------------------------
 library("DESeq2")
-dds <- DESeqDataSetFromMatrix(countData = cts,
-                              colData = coldata,
+
+#dds <- DESeqDataSetFromMatrix(countData = cts,
+ #                             colData = coldata,
+ #                             design = ~ condition)
+#dds
+
+#K# loading the object "cervical" which is a count matrix
+load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
+#colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
+#apparently not needed
+class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
+#K# I want to make this a table. Did not help.
+#library("data.table")
+#setDT(class)
+class
+head(cervical)
+
+dds <- DESeqDataSetFromMatrix(countData = cervical,
+                              colData = class,
                               design = ~ condition)
 dds
 
@@ -134,10 +151,15 @@ library("DESeq2")
 ddsSE <- DESeqDataSet(se, design = ~ cell + dex)
 ddsSE
 
+
+
+### END OF INPUT ###############################################################
 ## ----prefilter----------------------------------------------------------------
+#K# prefiltering reduces memory size by removing low count genes
 keep <- rowSums(counts(dds)) >= 10
 dds <- dds[keep,]
 
+#K# to methods of determining what DESeq 2 will compare against
 ## ----factorlvl----------------------------------------------------------------
 dds$condition <- factor(dds$condition, levels = c("untreated","treated"))
 
@@ -166,15 +188,18 @@ resLFC
 #  register(MulticoreParam(4))
 
 ## ----resOrder-----------------------------------------------------------------
+#K# sorts table by p-value
 resOrdered <- res[order(res$pvalue),]
-
+resOrdered
 ## ----sumRes-------------------------------------------------------------------
 summary(res)
 
 ## ----sumRes01-----------------------------------------------------------------
+#K# How many p-values below 0,1?
 sum(res$padj < 0.1, na.rm=TRUE)
 
 ## ----resAlpha05---------------------------------------------------------------
+#K# creating the results table
 res05 <- results(dds, alpha=0.05)
 summary(res05)
 sum(res05$padj < 0.05, na.rm=TRUE)
@@ -255,11 +280,12 @@ head(resMF)
 resMFType <- results(ddsMF,
                      contrast=c("type", "single", "paired"))
 head(resMFType)
-
+###Data transformations ########################################################
 ## ----rlogAndVST---------------------------------------------------------------
 vsd <- vst(dds, blind=FALSE)
 rld <- rlog(dds, blind=FALSE)
 head(assay(vsd), 3)
+head(assay(rld), 3)
 
 ## ----meansd-------------------------------------------------------------------
 # this gives log2(n + 1)
@@ -283,11 +309,22 @@ pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
 
 ## ----sampleClust--------------------------------------------------------------
 sampleDists <- dist(t(assay(vsd)))
+sampleDists <- dist(t(assay(rld)))
 
 ## ----figHeatmapSamples, fig.height=4, fig.width=6-----------------------------
 library("RColorBrewer")
 sampleDistMatrix <- as.matrix(sampleDists)
 rownames(sampleDistMatrix) <- paste(vsd$condition, vsd$type, sep="-")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+#K# same for rld
+library("RColorBrewer")
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(rld$condition, rld$type, sep="-")
 colnames(sampleDistMatrix) <- NULL
 colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
 pheatmap(sampleDistMatrix,
