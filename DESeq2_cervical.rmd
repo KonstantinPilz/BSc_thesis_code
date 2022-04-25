@@ -27,6 +27,7 @@ Since there is no data.frame object provided for the cervical data, we need to p
 load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
 #creating the data.frame object
 class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
+#colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
 #optional: check data.frame object and beginning of the data
 class
 head(cervical)
@@ -50,7 +51,7 @@ It may be important to make sure in which order the conditions are compared. (de
 dds$condition <- factor(dds$condition, levels = c("untreated","treated"))
 ```
 5. Standard differential expression analysis
-This method foes through all steps of DESeq2 and gives results.
+This method goes through all steps of DESeq2 and gives results.
 ```{r}
 dds <- DESeq(dds)
 res <- results(dds)
@@ -99,7 +100,63 @@ This is not what I expected. The sd should be normalized -> about equal for any 
 library("pheatmap")
 select <- order(rowMeans(counts(dds,normalized=TRUE)),
                 decreasing=TRUE)[1:20]
-df <- as.data.frame(colData(dds)[,c("condition","type")])
+df <- as.data.frame(colData(dds)[,c("condition")])
 pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
          cluster_cols=FALSE, annotation_col=df)
+```
+11. Heatmap of the sample-to-sample distances
+sampleDists gives distances
+creating plot with RColorBrewer and pheatmap
+```{r}
+sampleDists <- dist(t(assay(rld)))
+#plot
+library("RColorBrewer")
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(rld$condition)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+
+```
+12. PCA
+Shows samples in 2D plot, the axes representing their two principal components
+```{r}
+plotPCA(rld, intgroup=c("condition"))
+```
+13. Exlude samples
+14. DESeq()
+Soll ich die Analyse jetzt mit den normalisierten Daten oder dem Original ohne excludierte samples ausführen?
+15. Standard differential expression analysis
+This method goes through all steps of DESeq2 and gives results.
+Let's try with rld - does not work: rld is no DESeq2 data set
+redo steps 5 to 7
+- 5.
+```{r}
+rld <- DESeq(rld)
+res <- results(rld)
+res
+```
+6. Perform LFC transformation
+For better visualization and gene ranking we use the method lfcShrink
+```{r}
+resultsNames(dds)
+resLFC <- lfcShrink(dds, coef="condition_treated_vs_untreated", type="apeglm")
+resLFC
+```
+7. Table ordered by p-value
+For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
+Finally, we can get a results table.
+```{r}
+resOrdered <- res[order(res$pvalue),]
+resOrdered
+summary(res)
+#How many below 0.1?
+sum(res$padj < 0.1, na.rm=TRUE)
+#results table
+res05 <- results(dds, alpha=0.05)
+summary(res05)
+sum(res05$padj < 0.05, na.rm=TRUE)
 ```

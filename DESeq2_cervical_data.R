@@ -21,7 +21,7 @@ knitr::opts_chunk$set(tidy = FALSE,
 filepath <- system.file("/home/pilz/data/MLSeq_original_data/cervical.rda", package = "MLSeq")
 
 ## ----read_cervical_data-------------------------------------------------------
-#K# since I have the data as .rda I need to import them in a differnt way
+
 load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
 
 ## ----txiSetup-----------------------------------------------------------------
@@ -159,7 +159,7 @@ ddsSE
 keep <- rowSums(counts(dds)) >= 10
 dds <- dds[keep,]
 
-#K# to methods of determining what DESeq 2 will compare against
+#K# two methods of determining what DESeq2 will compare against
 ## ----factorlvl----------------------------------------------------------------
 dds$condition <- factor(dds$condition, levels = c("untreated","treated"))
 
