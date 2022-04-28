@@ -50,36 +50,8 @@ It may be important to make sure in which order the conditions are compared. (de
 ```{r}
 dds$condition <- factor(dds$condition, levels = c("untreated","treated"))
 ```
-5. Standard differential expression analysis
-This method goes through all steps of DESeq2 and gives results.
-```{r}
-dds <- DESeq(dds)
-res <- results(dds)
-res
-```
-6. Perform LFC transformation
-For better visualization and gene ranking we use the method lfcShrink
-```{r}
-resultsNames(dds)
-resLFC <- lfcShrink(dds, coef="condition_treated_vs_untreated", type="apeglm")
-resLFC
-```
-7. Table ordered by p-value
-For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
-Finally, we can get a results table.
-```{r}
-resOrdered <- res[order(res$pvalue),]
-resOrdered
-summary(res)
-#How many below 0.1?
-sum(res$padj < 0.1, na.rm=TRUE)
-#results table
-res05 <- results(dds, alpha=0.05)
-summary(res05)
-sum(res05$padj < 0.05, na.rm=TRUE)
-```
-After this simple analysis, we will now go on to take the steps in between individually.
-8. rlog-transformation
+The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
+5. rlog-transformation
 Apparently, you do this if you don't want to do DE but visualization and clustering instead. Main point is to remove the high variance for low means
 rlog ~ regularized logarithm - normalizes on basis of library size and transforms data to log2 scale
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformations)
@@ -88,14 +60,14 @@ rld <- rlog(dds, blind=FALSE)
 head(assay(rld), 3)
 
 ```
-9. Plot showing dependence of sd on mean
+6. Plot showing dependence of sd on mean
 ```{r}
 #plot of sd and mean
 library("vsn")
 meanSdPlot(assay(rld))
 ```
 This is not what I expected. The sd should be normalized -> about equal for any mean
-10. Heatmap
+7. Heatmap
 ```{r}
 library("pheatmap")
 select <- order(rowMeans(counts(dds,normalized=TRUE)),
@@ -104,7 +76,7 @@ df <- as.data.frame(colData(dds)[,c("condition")])
 pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
          cluster_cols=FALSE, annotation_col=df)
 ```
-11. Heatmap of the sample-to-sample distances
+8. Heatmap of the sample-to-sample distances
 sampleDists gives distances
 creating plot with RColorBrewer and pheatmap
 ```{r}
@@ -121,32 +93,29 @@ pheatmap(sampleDistMatrix,
          col=colors)
 
 ```
-12. PCA
+9. PCA
 Shows samples in 2D plot, the axes representing their two principal components
 ```{r}
 plotPCA(rld, intgroup=c("condition"))
 ```
-13. Exlude samples
-14. DESeq()
-Soll ich die Analyse jetzt mit den normalisierten Daten oder dem Original ohne excludierte samples ausführen?
-15. Standard differential expression analysis
+10. Exlude samples
+...
+11. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
-Let's try with rld - does not work: rld is no DESeq2 data set
-redo steps 5 to 7
-- 5.
 ```{r}
-rld <- DESeq(rld)
-res <- results(rld)
+dds <- DESeq(dds)
+res <- results(dds)
 res
 ```
-6. Perform LFC transformation
+12. Perform LFC transformation
 For better visualization and gene ranking we use the method lfcShrink
 ```{r}
 resultsNames(dds)
 resLFC <- lfcShrink(dds, coef="condition_treated_vs_untreated", type="apeglm")
 resLFC
 ```
-7. Table ordered by p-value
+Error. resultsNamesDDS is not TRUE
+13. Table ordered by p-value
 For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
 Finally, we can get a results table.
 ```{r}
@@ -159,4 +128,27 @@ sum(res$padj < 0.1, na.rm=TRUE)
 res05 <- results(dds, alpha=0.05)
 summary(res05)
 sum(res05$padj < 0.05, na.rm=TRUE)
+```
+(optional) Independend hypothesis weighting
+14. MA-plot
+```{r}
+plotMA(res, ylim=c(-2,2))
+```
+This looks nothing like what I expected. I looks like it is mirrored by the y-axis and moved -1.6 into x-direction
+
+Same plot for shrunken log2 fold chages (removes noise)
+```{r}
+plotMA(resLFC, ylim=c(-2,2))
+```
+Does not work due to Error in 12
+15. Plot counts for individual genes
+```{r}
+plotCounts(dds, gene=which.min(res$padj), intgroup="condition")
+```
+16. Export the list of genes that pass p-value
+Why can I not run this code chunk?
+```{r}
+resSig <- subset(resOrdered, padj < 0.1)
+resSig
+write.csv(as.data.frame(resSig), file="results_cervical_p01_no_exlclusion")
 ```
