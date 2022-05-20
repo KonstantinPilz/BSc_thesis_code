@@ -1,0 +1,5 @@
+#cervical data
+#execute while in your target folder
+wget https://github.com/gokmenzararsiz/MLSeq/blob/master/data/cervical.rda
+
+#lung cancer data was sent via one-time download link
