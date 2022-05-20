@@ -52,10 +52,12 @@ dds$condition <- factor(dds$condition, levels = c("untreated","treated"))
 ```
 The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
 5. rlog-transformation
-Apparently, you do this if you don't want to do DE but visualization and clustering instead. Main point is to remove the high variance for low means
+You do this if you don't want to do DE but visualization and clustering instead. Main point is to remove the high variance for low means
 rlog ~ regularized logarithm - normalizes on basis of library size and transforms data to log2 scale
-(For a big number of samples there is an alternative: VST ~  variance stabilizing transformations)
+Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
+(For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
+vsd <- varianceStabilizingTransformation(dds, blind=FALSE)
 rld <- rlog(dds, blind=FALSE)
 head(assay(rld), 3)
 
@@ -63,18 +65,30 @@ head(assay(rld), 3)
 6. Plot showing dependence of sd on mean
 ```{r}
 #plot of sd and mean
+ntd <- normTransform(dds)
 library("vsn")
+library("hexbin")
+jpeg(file="/home/pilz/data/graphics/ntd.jpeg")
+meanSdPlot(assay(ntd))
+dev.off()
+jpeg(file="/home/pilz/data/graphics/rld.jpeg")
 meanSdPlot(assay(rld))
+dev.off()
+jpeg(file="/home/pilz/data/graphics/vsd.jpeg")
+meanSdPlot(assay(vsd))
+dev.off()
 ```
-This is not what I expected. The sd should be normalized -> about equal for any mean
+rld has the most even mean
 7. Heatmap
 ```{r}
 library("pheatmap")
 select <- order(rowMeans(counts(dds,normalized=TRUE)),
                 decreasing=TRUE)[1:20]
 df <- as.data.frame(colData(dds)[,c("condition")])
+jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
 pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
          cluster_cols=FALSE, annotation_col=df)
+dev.off()
 ```
 8. Heatmap of the sample-to-sample distances
 sampleDists gives distances
