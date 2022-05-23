@@ -27,7 +27,7 @@ Since there is no data.frame object provided for the cervical data, we need to p
 load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
 #creating the data.frame object
 class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
-#colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
+colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
 #optional: check data.frame object and beginning of the data
 class
 head(cervical)
@@ -80,15 +80,27 @@ dev.off()
 ```
 rld has the most even mean
 7. Heatmap
+We need to first estimate the size factors to make it work
 ```{r}
 library("pheatmap")
+dds <- estimateSizeFactors(dds)
 select <- order(rowMeans(counts(dds,normalized=TRUE)),
                 decreasing=TRUE)[1:20]
 df <- as.data.frame(colData(dds)[,c("condition")])
-jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
-pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
+#jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
+#saving the pheatmap is complex
+heatmap <- pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
          cluster_cols=FALSE, annotation_col=df)
-dev.off()
+save_pheatmap_pdf <- function(x, filename, width=7, height=7) {
+   stopifnot(!missing(x))
+   stopifnot(!missing(filename))
+   pdf(filename, width=width, height=height)
+   grid::grid.newpage()
+   grid::grid.draw(x$gtable)
+   dev.off()
+}
+save_pheatmap_pdf(heatmap, "/home/pilz/data/graphics/heatmap.pdf")
+#dev.off()
 ```
 8. Heatmap of the sample-to-sample distances
 sampleDists gives distances
@@ -101,20 +113,41 @@ sampleDistMatrix <- as.matrix(sampleDists)
 rownames(sampleDistMatrix) <- paste(rld$condition)
 colnames(sampleDistMatrix) <- NULL
 colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
-pheatmap(sampleDistMatrix,
+heatmap2 <- pheatmap(sampleDistMatrix,
          clustering_distance_rows=sampleDists,
          clustering_distance_cols=sampleDists,
          col=colors)
-
+save_pheatmap_pdf(heatmap2, "/home/pilz/data/graphics/heatmapsampledist.pdf")
 ```
 9. PCA
 Shows samples in 2D plot, the axes representing their two principal components
 ```{r}
-plotPCA(rld, intgroup=c("condition"))
+library("ggplot2")
+jpeg(file="/home/pilz/data/graphics/PCA.jpeg")
+plotPCA(rld) + geom_text(aes(label=name),vjust=2)
+dev.off()
 ```
-10. Exlude samples
+Observation: Sample 15 is a clear outlier on the y axis
+Exclude sample 15 and redo PCA
+```{r}
+rld <- rld[,-15]
+dds <- dds[,-15]
+
+jpeg(file="/home/pilz/data/graphics/PCA2.jpeg")
+plotPCA(rld) + geom_text(aes(label=name),vjust=2)
+dev.off()
+```
+Obsvation: Sample 54 is a clear outlier
+```{r}
+rld <- rld[,-54]
+dds <- dds[,-54]
+
+jpeg(file="/home/pilz/data/graphics/PCA3.jpeg")
+plotPCA(rld) + geom_text(aes(label=name),vjust=2)
+dev.off()
+```
 ...
-11. Standard differential expression analysis
+12. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
 dds <- DESeq(dds)
