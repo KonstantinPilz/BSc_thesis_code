@@ -1,10 +1,10 @@
 ---
-title: "DESeq2_cervical
-output: html_DESeq2_cervical
+title: "DESeq2_lung"
+output: html_DESeq2_lung
 ---
 https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
-This is the analysis of the cervical data set provided by the authors of MLSeq using DESeq2.
-
+This is the analysis of the lung data set provided by the authors of MLSeq using DESeq2.
+Data was sent by WeTransfer.
 
 
 1. load libraries
@@ -18,22 +18,22 @@ knitr::opts_chunk$set(tidy = FALSE,
 library("DESeq2")
 ```
 2. load and read file
-The cervical data set is a count matrix, to use it in DESeq2 analysis we use the method "DESeqDataSetFromMatrix" which expects the following inputs:
+The lung data set is a count matrix, to use it in DESeq2 analysis we use the method "DESeqDataSetFromMatrix" which expects the following inputs:
 A) The count matrix
 B) A data.frame/ DataFrame object
 C) A design argument that I don't fully understand but which seems to be necessary
 Since there is no data.frame object provided for the cervical data, we need to provide it. To do so, we create a table containing one column for the sample number and one column for the treatment. The first 29 samples are controls, the last 29 are treated.
 ```{r}
-load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
+lung <- read(="/home/pilz/data/MLSeq_original_data/lung.txt")
 #creating the data.frame object
-class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
-colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
+#class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
+#colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
 #optional: check data.frame object and beginning of the data
-class
-head(cervical)
+#class
+head(lung)
 #read the data into a DESeqDataSet
-dds <- DESeqDataSetFromMatrix(countData = cervical,
-                              colData = class,
+dds <- DESeqDataSetFromMatrix(countData = lung,
+                              colData = coldata,
                               design = ~ condition)
 #look at object
 dds
