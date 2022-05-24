@@ -1,6 +1,9 @@
 ---
 title: "DESeq2_cervical
-output: html_DESeq2_cervical
+output:
+  html_notebook:
+    toc: yes
+    theme: united
 ---
 https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
 This is the analysis of the cervical data set provided by the authors of MLSeq using DESeq2.
