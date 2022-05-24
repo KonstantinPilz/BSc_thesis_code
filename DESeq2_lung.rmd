@@ -27,15 +27,16 @@ Since there is no data.frame object provided for the cervical data, we need to p
 data <- "/home/pilz/data/MLSeq_original_data/lung.csv"
 lung <- read.csv(data,  sep=" ")
 #creating the data.frame object
-#class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
-#colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
+#lung data has 576 samples in T1 and 552 in T2.
+class <- data.frame(condition = factor(rep(c("T1","T2"), c(576, 552))))
+colnames(lung) <- 1:1128 #replacing name of columns so they match data.frame
 #optional: check data.frame object and beginning of the data
 #class
 head(lung)
 #read the data into a DESeqDataSet
 
 dds <- DESeqDataSetFromMatrix(countData = lung,
-                              colData = coldata,
+                              colData = class,
                               design = ~ condition)
 #look at object
 dds
@@ -47,10 +48,13 @@ by excluding low count genes we reduce the memory usage of the later methods
 keep <- rowSums(counts(dds)) >= 10
 dds <- dds[keep,]
 ```
-4. set factor levels
+
+This reduced genes from 20500 to 20100 -> not very impressive
+
+5. set factor levels
 It may be important to make sure in which order the conditions are compared. (default is alphabetical order)
 ```{r}
-dds$condition <- factor(dds$condition, levels = c("untreated","treated"))
+dds$condition <- factor(dds$condition, levels = c("T1","T2"))
 ```
 The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
 5. rlog-transformation
@@ -70,13 +74,13 @@ head(assay(rld), 3)
 ntd <- normTransform(dds)
 library("vsn")
 library("hexbin")
-jpeg(file="/home/pilz/data/graphics/ntd.jpeg")
+jpeg(file="/home/pilz/data/graphics/lung/ntd.jpeg")
 meanSdPlot(assay(ntd))
 dev.off()
-jpeg(file="/home/pilz/data/graphics/rld.jpeg")
+jpeg(file="/home/pilz/data/graphics/lung/rld.jpeg")
 meanSdPlot(assay(rld))
 dev.off()
-jpeg(file="/home/pilz/data/graphics/vsd.jpeg")
+jpeg(file="/home/pilz/data/graphics/lung/vsd.jpeg")
 meanSdPlot(assay(vsd))
 dev.off()
 ```
