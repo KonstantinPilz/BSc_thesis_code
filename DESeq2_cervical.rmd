@@ -9,13 +9,25 @@ This is the analysis of the cervical data set provided by the authors of MLSeq u
 
 1. load libraries
 
-```{r}
+```{r, eval = FALSE}
 ## ----setup, echo=FALSE, results="hide"----------------------------------------
 knitr::opts_chunk$set(tidy = FALSE,
                       cache = FALSE,
                       dev = "png",
                       message = FALSE, error = FALSE, warning = TRUE)
+```
+```{r}
 library("DESeq2")
+```
+
+```{r}
+locale <- FALSE
+prefix <- ifelse(locale, "~", "")
+data_dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/")
+result_dir <- file.path(data_dir, "results/")
+```
+```{r}
+recompute <- FALSE
 ```
 2. load and read file
 The cervical data set is a count matrix, to use it in DESeq2 analysis we use the method "DESeqDataSetFromMatrix" which expects the following inputs:
@@ -24,9 +36,10 @@ B) A data.frame/ DataFrame object
 C) A design argument that I don't fully understand but which seems to be necessary
 Since there is no data.frame object provided for the cervical data, we need to provide it. To do so, we create a table containing one column for the sample number and one column for the treatment. The first 29 samples are controls, the last 29 are treated.
 ```{r}
-load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
+file <- file.path(data_dir, "MLseq_original_data", "cervical.rda")
+load(file = file)
 #creating the data.frame object
-class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
+class <- data.frame(condition = factor(rep(c("untreated", "treated"), c(29, 29))))
 colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
 #optional: check data.frame object and beginning of the data
 class
@@ -34,7 +47,7 @@ head(cervical)
 #read the data into a DESeqDataSet
 dds <- DESeqDataSetFromMatrix(countData = cervical,
                               colData = class,
-                              design = ~ condition)
+                              design = ~condition)
 #look at object
 dds
 
@@ -48,7 +61,7 @@ dds <- dds[keep,]
 4. set factor levels
 It may be important to make sure in which order the conditions are compared. (default is alphabetical order)
 ```{r}
-dds$condition <- factor(dds$condition, levels = c("untreated","treated"))
+dds$condition <- factor(dds$condition, levels = c("untreated", "treated"))
 ```
 The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
 5. rlog-transformation
@@ -57,8 +70,17 @@ rlog ~ regularized logarithm - normalizes on basis of library size and transform
 Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
-vsd <- varianceStabilizingTransformation(dds, blind=FALSE)
-rld <- rlog(dds, blind=FALSE)
+file_vsd <- file.path(result_dir, "01_vsd.Rdata")
+file_rld <- file.path(result_dir, "01_rld.Rdata")
+if (recompute) {
+  vsd <- varianceStabilizingTransformation(dds, blind = FALSE)
+  rld <- rlog(dds, blind = FALSE)
+  save(vsd, file = file_vsd)
+  save(rld, file = file_rld)
+} else {
+  load(file = file_vsd)
+  load(file = file_rld)
+}
 head(assay(rld), 3)
 
 ```
@@ -68,13 +90,13 @@ head(assay(rld), 3)
 ntd <- normTransform(dds)
 library("vsn")
 library("hexbin")
-jpeg(file="/home/pilz/data/graphics/ntd.jpeg")
+jpeg(file = file.path(result_dir, "01_ntd.jpeg"))
 meanSdPlot(assay(ntd))
 dev.off()
-jpeg(file="/home/pilz/data/graphics/rld.jpeg")
+jpeg(file = "/home/pilz/data/graphics/rld.jpeg")
 meanSdPlot(assay(rld))
 dev.off()
-jpeg(file="/home/pilz/data/graphics/vsd.jpeg")
+jpeg(file = "/home/pilz/data/graphics/vsd.jpeg")
 meanSdPlot(assay(vsd))
 dev.off()
 ```
@@ -84,20 +106,20 @@ We need to first estimate the size factors to make it work
 ```{r}
 library("pheatmap")
 dds <- estimateSizeFactors(dds)
-select <- order(rowMeans(counts(dds,normalized=TRUE)),
-                decreasing=TRUE)[1:20]
-df <- as.data.frame(colData(dds)[,c("condition")])
+select <- order(rowMeans(counts(dds, normalized = TRUE)),
+                decreasing = TRUE)[1:20]
+df <- as.data.frame(colData(dds)[, c("condition")])
 #jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
 #saving the pheatmap is complex
-heatmap <- pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
-         cluster_cols=FALSE, annotation_col=df)
-save_pheatmap_pdf <- function(x, filename, width=7, height=7) {
-   stopifnot(!missing(x))
-   stopifnot(!missing(filename))
-   pdf(filename, width=width, height=height)
-   grid::grid.newpage()
-   grid::grid.draw(x$gtable)
-   dev.off()
+heatmap <- pheatmap(assay(rld)[select,], cluster_rows = FALSE, show_rownames = FALSE,
+                    cluster_cols = FALSE, annotation_col = df)
+save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
+  stopifnot(!missing(x))
+  stopifnot(!missing(filename))
+  pdf(filename, width = width, height = height)
+  grid::grid.newpage()
+  grid::grid.draw(x$gtable)
+  dev.off()
 }
 save_pheatmap_pdf(heatmap, "/home/pilz/data/graphics/heatmap.pdf")
 #dev.off()
@@ -112,38 +134,38 @@ library("RColorBrewer")
 sampleDistMatrix <- as.matrix(sampleDists)
 rownames(sampleDistMatrix) <- paste(rld$condition)
 colnames(sampleDistMatrix) <- NULL
-colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+colors <- colorRampPalette(rev(brewer.pal(9, "Blues")))(255)
 heatmap2 <- pheatmap(sampleDistMatrix,
-         clustering_distance_rows=sampleDists,
-         clustering_distance_cols=sampleDists,
-         col=colors)
+                     clustering_distance_rows = sampleDists,
+                     clustering_distance_cols = sampleDists,
+                     col = colors)
 save_pheatmap_pdf(heatmap2, "/home/pilz/data/graphics/heatmapsampledist.pdf")
 ```
 9. PCA
 Shows samples in 2D plot, the axes representing their two principal components
 ```{r}
 library("ggplot2")
-jpeg(file="/home/pilz/data/graphics/PCA.jpeg")
-plotPCA(rld) + geom_text(aes(label=name),vjust=2)
-dev.off()
+# jpeg(file="/home/pilz/data/graphics/PCA.jpeg")
+plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
+# dev.off()
 ```
 Observation: Sample 15 is a clear outlier on the y axis
 Exclude sample 15 and redo PCA
 ```{r}
-rld <- rld[,-15]
-dds <- dds[,-15]
+rld <- rld[, -15]
+dds <- dds[, -15]
 
-jpeg(file="/home/pilz/data/graphics/PCA2.jpeg")
-plotPCA(rld) + geom_text(aes(label=name),vjust=2)
+jpeg(file = "/home/pilz/data/graphics/PCA2.jpeg")
+plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
 ```
 Obsvation: Sample 54 is a clear outlier
 ```{r}
-rld <- rld[,-54]
-dds <- dds[,-54]
+rld <- rld[, -54]
+dds <- dds[, -54]
 
-jpeg(file="/home/pilz/data/graphics/PCA3.jpeg")
-plotPCA(rld) + geom_text(aes(label=name),vjust=2)
+jpeg(file = "/home/pilz/data/graphics/PCA3.jpeg")
+plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
 ```
 ...
@@ -158,7 +180,7 @@ res
 For better visualization and gene ranking we use the method lfcShrink
 ```{r}
 resultsNames(dds)
-resLFC <- lfcShrink(dds, coef="condition_treated_vs_untreated", type="apeglm")
+resLFC <- lfcShrink(dds, coef = "condition_treated_vs_untreated", type = "apeglm")
 resLFC
 ```
 Error. resultsNamesDDS is not TRUE
@@ -170,32 +192,32 @@ resOrdered <- res[order(res$pvalue),]
 resOrdered
 summary(res)
 #How many below 0.1?
-sum(res$padj < 0.1, na.rm=TRUE)
+sum(res$padj < 0.1, na.rm = TRUE)
 #results table
-res05 <- results(dds, alpha=0.05)
+res05 <- results(dds, alpha = 0.05)
 summary(res05)
-sum(res05$padj < 0.05, na.rm=TRUE)
+sum(res05$padj < 0.05, na.rm = TRUE)
 ```
 (optional) Independend hypothesis weighting
 14. MA-plot
 ```{r}
-plotMA(res, ylim=c(-2,2))
+plotMA(res, ylim = c(-2, 2))
 ```
 This looks nothing like what I expected. I looks like it is mirrored by the y-axis and moved -1.6 into x-direction
 
 Same plot for shrunken log2 fold chages (removes noise)
 ```{r}
-plotMA(resLFC, ylim=c(-2,2))
+plotMA(resLFC, ylim = c(-2, 2))
 ```
 Does not work due to Error in 12
 15. Plot counts for individual genes
 ```{r}
-plotCounts(dds, gene=which.min(res$padj), intgroup="condition")
+plotCounts(dds, gene = which.min(res$padj), intgroup = "condition")
 ```
 16. Export the list of genes that pass p-value
 Why can I not run this code chunk?
 ```{r}
 resSig <- subset(resOrdered, padj < 0.1)
 resSig
-write.csv(as.data.frame(resSig), file="results_cervical_p01_no_exlclusion")
+write.csv(as.data.frame(resSig), file = "results_cervical_p01_no_exlclusion")
 ```
