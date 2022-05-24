@@ -24,7 +24,8 @@ B) A data.frame/ DataFrame object
 C) A design argument that I don't fully understand but which seems to be necessary
 Since there is no data.frame object provided for the cervical data, we need to provide it. To do so, we create a table containing one column for the sample number and one column for the treatment. The first 29 samples are controls, the last 29 are treated.
 ```{r}
-lung <- read(="/home/pilz/data/MLSeq_original_data/lung.txt")
+data <- "/home/pilz/data/MLSeq_original_data/lung.csv"
+lung <- read.csv(data,  sep=" ")
 #creating the data.frame object
 #class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
 #colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
@@ -32,6 +33,7 @@ lung <- read(="/home/pilz/data/MLSeq_original_data/lung.txt")
 #class
 head(lung)
 #read the data into a DESeqDataSet
+
 dds <- DESeqDataSetFromMatrix(countData = lung,
                               colData = coldata,
                               design = ~ condition)
