@@ -17,7 +17,9 @@ This is the analysis of the cervical data set provided by the authors of MLSeq u
 knitr::opts_chunk$set(tidy = FALSE,
                       cache = FALSE,
                       dev = "png",
-                      message = FALSE, error = FALSE, warning = TRUE)
+                      message = FALSE,
+                      error = FALSE,
+                      warning = TRUE)
 ```
 ```{r}
 library("DESeq2")
@@ -33,7 +35,7 @@ locale <- TRUE
 recompute <- FALSE
 
 prefix <- ifelse(locale, "~", "")
-dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical")
+dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_DESeq2")
 data_dir <- file.path(dir, "data/")
 result_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")

@@ -12,7 +12,12 @@ This is the analysis of the cervical data set provided by the authors of MLSeq.
 1. setup
 ```{r}
 library(knitr)
-opts_chunk$set(tidy = FALSE, dev = "pdf", fig.show = "hide", message = FALSE, fig.align = "center", cache = FALSE)
+opts_chunk$set(tidy = FALSE,
+               dev = "pdf",
+               fig.show = "hide",
+               message = FALSE,
+               fig.align = "center",
+               cache = FALSE)
 
 ```
 libraries
@@ -47,20 +52,10 @@ head(cervical[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
 class <- DataFrame(condition = factor(rep(c("N","T"), c(29, 29))))
 class
 ```
-Since we want to build a classification model, we need training data.
-After training, we need more data to assess the performance
-
-It is important to split the data in a good ratio. Default is 70% training.
-If we set it to e.g. 90% for this small sample, there would be only 6 samples
-left for testing. A single unit missclassification, which the model is
-sensitive to would result in an accuracy loss of 17%
-
-The seed determines how the samples are randomized -> For reproductibility use same seed
+3. pre-filtering
+The seed determines how the samples are randomized -> For reproducibility use same seed
 In particular it determines the variable ind
-We do not perform a differential expression analysis to select differentially
-expressed genes. However, in practice, DE analysis might be performed before
-fitting classifiers. Here, we selected top 100 features having the highest
-gene-wise variances in order to decrease computational cost.
+We do not perform a differential expression analysis to select differentially expressed genes. However, in practice, DE analysis might be performed before fitting classifiers. Here, we selected top 100 features having the highest gene-wise variances in order to decrease computational cost.
 ```{r}
 set.seed(2128)
 
@@ -69,3 +64,39 @@ vars <- sort(apply(cervical, 1, var, na.rm = TRUE), decreasing = TRUE)#sorting b
 data <- cervical[names(vars)[1:100], ]
 head(data[ ,1:10])
 ```
+4. Split data into testing and training set
+Since we want to build a classification model, we need training data.
+After training, we need more data to assess the performance
+
+It is important to split the data in a good ratio. Default is 70% training.
+If we set it to e.g. 90% for this small sample, there would be only 6 samples
+left for testing. A single unit missclassification, which the model is
+sensitive to would result in an accuracy loss of 17%
+```{r}
+nTest <- ceiling(ncol(data) * 0.3) #K# ncol: number of rows in an array
+ind <- sample(ncol(data), nTest, FALSE) #K# This is randomizing the samples
+
+# Minimum count is set to 1 in order to prevent 0 division problem within
+# classification models.
+data.train <- as.matrix(data[ ,-ind] + 1) #K# ind is a collection of nTest samples
+#K# training data: all data except for ind -> 70% -> 40 samples
+data.test <- as.matrix(data[ ,ind] + 1)#K# all lines (genes) of the matrix, but only the columns specified in ind
+#K# test data: the remaining data -> ind -> 30% -> 18 samples
+
+#?# Why this class type?
+#K# I think it contains the classification of each sample
+classtr <- DataFrame(condition = class[-ind, ])
+classts <- DataFrame(condition = class[ind, ])
+
+#DESeqDataSets, input for MLSeq
+data.trainS4 = DESeqDataSetFromMatrix(countData = data.train,
+                                      colData = classtr,
+                                      design = formula(~condition))
+data.testS4 = DESeqDataSetFromMatrix(countData = data.test,
+                                     colData = classts,
+                                     design = formula(~condition))
+
+```
+5. Training classifiers
+First, the data is normalized using one of four methods, then 93 training methods can be used to train classifiers
+> availableMethods() to see them
