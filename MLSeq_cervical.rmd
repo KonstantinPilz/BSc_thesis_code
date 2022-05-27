@@ -38,7 +38,7 @@ recompute <- FALSE
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_MLSeq")
 data_dir <- file.path(dir, "data/")
-result_dir <- file.path(dir, "results/")
+results_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
 2. load data
@@ -98,5 +98,84 @@ data.testS4 = DESeqDataSetFromMatrix(countData = data.test,
 
 ```
 5. Training classifiers
-First, the data is normalized using one of four methods, then 93 training methods can be used to train classifiers
+First, the data is normalized using one of four methods
+deseq-rlog: Normalization with deseq median ratio method.
+
+6. 93 training methods can be used to train classifiers
 > availableMethods() to see them
+
+Train all the sparse classifiers
+
+```{r}
+
+# Define control lists.
+ctrl.continuous <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
+ctrl.discrete <- discreteControl(method = "repeatedcv", number = 5, repeats = 10,
+                             tuneLength = 10)
+ctrl.voom <- voomControl(method = "repeatedcv", number = 5, repeats = 10,
+                             tuneLength = 10)
+#continuous
+fit.NSC <- classify(data = data.trainS4, method = "pam",
+                 preProcessing = "deseq-vst", ref = "T", tuneLength = 10,
+                 control = ctrl.continuous)
+
+#discrete
+fit.plda <- classify(data = data.trainS4, method = "PLDA", normalize = "deseq",
+                     ref = "T", control = ctrl.discrete)
+
+fit.plda2 <- classify(data = data.trainS4, method = "PLDA2", normalize = "deseq",
+                     ref = "T", control = ctrl.discrete)
+
+#voom-based
+fit.voomNSC <- classify(data = data.trainS4, method = "voomNSC",
+                         normalize = "deseq", ref = "T", control = ctrl.voom)
+
+pam.final <- trained(fit.NSC)$finalModel   ## 'pamrtrained' object.
+geneIdx <- pamr:::pamr.predict(pam.final, pam.final$xData, threshold = pam.final$threshold, type = "nonzero")
+
+genes.pam <- colnames(pam.final$xData)[geneIdx]
+genes.plda <- selectedGenes(fit.plda)
+genes.plda2 <- selectedGenes(fit.plda2)
+genes.vnsc <- selectedGenes(fit.voomNSC)
+
+tmp.list <- list(genes.pam, genes.plda, genes.plda2, genes.vnsc)
+
+
+nn <- c(length(genes.pam), length(genes.plda), length(genes.plda2), length(genes.vnsc))
+ooo <- order(nn, decreasing = TRUE)
+
+tmp.list <- tmp.list[ooo]
+#K# saving the list of genes
+capture.output(tmp.list, file = file.path(results_dir, "02_summary_sparse_classifiers.txt"))
+```
+Have a look at accuracies
+
+```{r}
+show(fit.NSC)
+show(fit.plda)
+show(fit.plda2)
+show(fit.voomNSC)
+```
+venn diagram of selected features by sparse classifiers
+```{r}
+common <- tmp.list[[1]]
+for (i in 2:(length(tmp.list))){
+  tmp2 <- tmp.list[[i]]
+  tmp <- common[common %in% tmp2]
+  common <- tmp
+}
+
+## ----venn_diagram, echo = FALSE-----------------------------------------------
+venn.plot <- venn.diagram(
+  x = list(voomNSC = genes.vnsc, NSC = genes.pam, PLDA = genes.plda, PLDA2 = genes.plda2),
+  height = 1200, width = 1200,
+  resolution = 200,
+  filename = file.path(graphics_dir, "Selected_features.png"), imagetype = "png",
+  col = "black",
+  fill = c("khaki1", "skyblue", "tomato3", "darkolivegreen3"),
+  alpha = 0.50,
+  cat.cex = 1.2,
+  cex = 1.5,
+  cat.fontface = "bold"
+)
+```
