@@ -27,7 +27,7 @@ library("pheatmap")
 library("RColorBrewer")
 library("ggplot2")
 ```
-Making it possible to run both ob local machine as well as on cluster
+Making it possible to run both on local machine as well as on cluster
 ```{r}
 locale <- TRUE
 recompute <- FALSE

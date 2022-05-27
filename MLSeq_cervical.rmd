@@ -1,0 +1,71 @@
+---
+title: "MLSeq_cervical"
+output:
+  html_notebook:
+    toc: yes
+    theme: united
+---
+This is the analysis of the cervical data set provided by the authors of MLSeq.
+
+
+
+1. setup
+```{r}
+library(knitr)
+opts_chunk$set(tidy = FALSE, dev = "pdf", fig.show = "hide", message = FALSE, fig.align = "center", cache = FALSE)
+
+```
+libraries
+```{r}
+library(MLSeq)
+library(DESeq2)
+library(edgeR)
+library(VennDiagram)
+library(pamr)
+library(caret)
+
+```
+Making it possible to run both on local machine as well as on cluster
+```{r}
+locale <- TRUE
+recompute <- FALSE
+
+prefix <- ifelse(locale, "~", "")
+dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_MLSeq")
+data_dir <- file.path(dir, "data/")
+result_dir <- file.path(dir, "results/")
+graphics_dir <- file.path(dir, "graphics/")
+```
+2. load data
+
+```{r}
+file <- file.path(data_dir, "cervical.rda")
+load(file = file)
+head(cervical[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
+
+#define class labels
+class <- DataFrame(condition = factor(rep(c("N","T"), c(29, 29))))
+class
+```
+Since we want to build a classification model, we need training data.
+After training, we need more data to assess the performance
+
+It is important to split the data in a good ratio. Default is 70% training.
+If we set it to e.g. 90% for this small sample, there would be only 6 samples
+left for testing. A single unit missclassification, which the model is
+sensitive to would result in an accuracy loss of 17%
+
+The seed determines how the samples are randomized -> For reproductibility use same seed
+In particular it determines the variable ind
+We do not perform a differential expression analysis to select differentially
+expressed genes. However, in practice, DE analysis might be performed before
+fitting classifiers. Here, we selected top 100 features having the highest
+gene-wise variances in order to decrease computational cost.
+```{r}
+set.seed(2128)
+
+vars <- sort(apply(cervical, 1, var, na.rm = TRUE), decreasing = TRUE)#sorting by variance. Highest: 747,902,689 Lowest: 4
+
+data <- cervical[names(vars)[1:100], ]
+head(data[ ,1:10])
+```
