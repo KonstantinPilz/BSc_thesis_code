@@ -55,7 +55,7 @@ class <- data.frame(condition = factor(rep(c("T1","T2"), c(576, 552))))
 colnames(lung) <- 1:1128 #replacing name of columns so they match data.frame
 #optional: check data.frame object and beginning of the data
 #class
-head(lung)
+#head(lung)
 #read the data into a DESeqDataSet
 
 dds <- DESeqDataSetFromMatrix(countData = lung,
