@@ -1,5 +1,5 @@
 ---
-title: "DESeq2_cervical
+title: "DESeq2_cervical"
 output:
   html_notebook:
     toc: yes
@@ -31,10 +31,10 @@ library("ggplot2")
 ```
 Making it possible to run both on local machine as well as on cluster
 ```{r}
-locale <- TRUE
+local <- TRUE
 recompute <- FALSE
 
-prefix <- ifelse(locale, "~", "")
+prefix <- ifelse(local, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_DESeq2")
 data_dir <- file.path(dir, "data/")
 result_dir <- file.path(dir, "results/")
@@ -173,7 +173,7 @@ jpeg(file = file.path(graphics_dir, "07_rld_PCA.jpeg"))
 plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
 ```
-Obsvation: Sample 54 is a clear outlier
+Observation: Sample 54 is a clear outlier
 ```{r}
 rld <- rld[, -53] #since a sample before it was excluded, 54 is in position 53
 dds <- dds[, -53]
@@ -217,7 +217,7 @@ resultsNames(dds)
 resLFC <- lfcShrink(dds, coef = "condition_treated_vs_untreated", type = "apeglm")
 resLFC
 ```
-Error. resultsNamesDDS is not TRUE
+
 13. Table ordered by p-value
 For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
 Finally, we can get a results table.
