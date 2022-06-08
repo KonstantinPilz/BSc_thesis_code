@@ -31,13 +31,13 @@ library("ggplot2")
 ```
 Making it possible to run both on local machine as well as on cluster
 ```{r}
-local <- TRUE
-recompute <- FALSE
+local <- FALSE
+recompute <- TRUE
 
 prefix <- ifelse(local, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_DESeq2")
 data_dir <- file.path(dir, "data/")
-result_dir <- file.path(dir, "results/")
+results_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
 2. load and read file
@@ -81,8 +81,8 @@ rlog ~ regularized logarithm - normalizes on basis of library size and transform
 Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
-file_vsd <- file.path(result_dir, "01_vsd.Rdata")
-file_rld <- file.path(result_dir, "02_rld.Rdata")
+file_vsd <- file.path(results_dir, "01_vsd.Rdata")
+file_rld <- file.path(results_dir, "02_rld.Rdata")
 if (recompute) {
   vsd <- varianceStabilizingTransformation(dds, blind = FALSE)
   rld <- rlog(dds, blind = FALSE)
@@ -187,7 +187,7 @@ Now, 29 also looks like an outlier.
 rld <- rld[, -28] #again, 29 is now at position 28 because 15 was excluded
 dds <- dds[, -28]
 
-jpeg(file = file.path(graphics_dir, "08_rld_PCA.jpeg"))
+jpeg(file = file.path(graphics_dir, "09_rld_PCA.jpeg"))
 plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
 ```
@@ -196,8 +196,8 @@ No obvious outliers anymore. Clustering is completed.
 13. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
-file_res <- file.path(result_dir, "03_res.Rdata")
-file_dds <- file.path(result_dir, "04_dds.Rdata")
+file_res <- file.path(results_dir, "03_res.Rdata")
+file_dds <- file.path(results_dir, "04_dds.Rdata")
 if (recompute) {
   dds <- DESeq(dds)
   res <- results(dds)
@@ -235,23 +235,28 @@ sum(res05$padj < 0.05, na.rm = TRUE)
 (optional) Independent hypothesis weighting
 14. MA-plot
 ```{r}
+jpeg(file = file.path(graphics_dir, "10_Independent_hypothesis weighting"))
 plotMA(res, ylim = c(-2, 2))
+dev.off()
 ```
 This looks nothing like what I expected. I looks like it is mirrored by the y-axis and moved -1.6 into x-direction
 
 Same plot for shrunken log2 fold chages (removes noise)
 ```{r}
+jpeg(file = file.path(graphics_dir, "11_Independent_hypothesis weighting_LFC"))
 plotMA(resLFC, ylim = c(-2, 2))
+dev.off()
 ```
 Does not work due to Error in 12
 15. Plot counts for individual genes
 ```{r}
+jpeg(file = file.path(graphics_dir, "12_counts_per_gene"))
 plotCounts(dds, gene = which.min(res$padj), intgroup = "condition")
+dev.off()
 ```
 16. Export the list of genes that pass p-value
-Why can I not run this code chunk?
 ```{r}
 resSig <- subset(resOrdered, padj < 0.1)
 resSig
-write.csv(as.data.frame(resSig), file = "results_cervical_p01_no_exlclusion")
+write.csv(as.data.frame(resSig), file = file.path(results_dir, "05_results_cervical_p01_no_exclusion.csv"))
 ```
