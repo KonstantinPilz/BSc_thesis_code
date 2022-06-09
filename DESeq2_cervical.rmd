@@ -32,7 +32,7 @@ library("ggplot2")
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 local <- FALSE
-recompute <- TRUE
+recompute <- FALSE
 
 prefix <- ifelse(local, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_DESeq2")
@@ -232,10 +232,10 @@ res05 <- results(dds, alpha = 0.05)
 summary(res05)
 sum(res05$padj < 0.05, na.rm = TRUE)
 ```
-(optional) Independent hypothesis weighting
+(optional: Independent hypothesis weighting)
 14. MA-plot
 ```{r}
-jpeg(file = file.path(graphics_dir, "10_Independent_hypothesis weighting"))
+jpeg(file = file.path(graphics_dir, "10_MA_plot"))
 plotMA(res, ylim = c(-2, 2))
 dev.off()
 ```
@@ -243,7 +243,7 @@ This looks nothing like what I expected. I looks like it is mirrored by the y-ax
 
 Same plot for shrunken log2 fold chages (removes noise)
 ```{r}
-jpeg(file = file.path(graphics_dir, "11_Independent_hypothesis weighting_LFC"))
+jpeg(file = file.path(graphics_dir, "11_MA_plot_weighting_LFC"))
 plotMA(resLFC, ylim = c(-2, 2))
 dev.off()
 ```
