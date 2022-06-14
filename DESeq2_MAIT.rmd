@@ -17,8 +17,9 @@ This is the analysis of the MAIT project using DESeq2.
 knitr::opts_chunk$set(tidy = FALSE,
                       cache = FALSE,
                       dev = "png",
-                      message = FALSE,
+                      message = TRUE,
                       error = FALSE,
+                      echo = TRUE,
                       warning = TRUE)
 ```
 ```{r}
@@ -28,11 +29,12 @@ library("hexbin")
 library("pheatmap")
 library("RColorBrewer")
 library("ggplot2")
+library("tidyverse")
 ```
 Making it possible to run both on local machine as well as on cluster
 ```{r}
-locale <- TRUE
-recompute <- FALSE
+locale <- FALSE
+recompute <- TRUE
 
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_DESeq2")
@@ -41,26 +43,61 @@ result_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
 2. load and read file
-The lung data set is a count matrix, to use it in DESeq2 analysis we use the method "DESeqDataSetFromMatrix" which expects the following inputs:
-A) The count matrix
-B) A data.frame/ DataFrame object
-C) A design argument that I don't fully understand but which seems to be necessary
-Since there is no data.frame object provided for the lung data, we need to provide it. To do so, we create a table containing one column for the sample number and one column for the treatment. The first 29 samples are controls, the last 29 are treated.
+Roughly following the script https://git.ufz.de/rnaseq/2018_maitcellsrnaseq/-/blob/main/DE_Analysis/01_DESeq2.Rmd
 ```{r}
-file <- file.path(data_dir, "lung.csv")
-lung <- read.csv(file,  sep=" ")
-#creating the data.frame object
-#lung data has 576 samples in T1 and 552 in T2.
-class <- data.frame(condition = factor(rep(c("T1","T2"), c(576, 552))))
-colnames(lung) <- 1:1128 #replacing name of columns so they match data.frame
-#optional: check data.frame object and beginning of the data
-#class
-head(lung)
-#read the data into a DESeqDataSet
+count_files <- list.files(path=data_dir, pattern="MAIT_16h", full.names=TRUE)
+names(count_files) <- gsub("-htseq_counts.txt", "", basename(count_files)) # this probably shortens the names
 
-dds <- DESeqDataSetFromMatrix(countData = lung,
-                              colData = class,
-                              design = ~ condition)
+SampleTableFile <- paste0(data_dir, "SampleTable_MAITseq_All.csv")
+backgroundInfo <- read.csv(SampleTableFile,  sep=",") #info about gender, age etc
+
+
+
+file_sampleTable <- file.path(result_dir, "01_sampleTable")
+
+if(recompute) {
+    STcolsOfInterest <- c(1:16)
+    STcolsAsFactors <- c(4,8,9,12,16)
+
+    sT <- read.table(SampleTableFile, header=T, sep=",", stringsAsFactors = FALSE)
+    for(i in STcolsAsFactors)
+    { #select requested columns
+      sT[,i] <- as.factor(sT[,i])
+    }
+    sT <- sT[,STcolsOfInterest]
+    sampleTable <- sT
+    colnames(sampleTable)[c(2,4,5)] <- c("sampleName", "time", "condition")
+    rownames(sampleTable) <- sampleTable$sampleName
+    sampleTable$time <- as.factor(paste0(sampleTable$time, "h"))
+    # fileName is required by DESeq2 function
+    rows <- match(names(count_files), rownames(sampleTable))
+    sampleTable$fileName[rows] <- basename(count_files)
+    # formatting condition etc.
+    sampleTable$condition <- ifelse(sampleTable$condition=='-', "Ctrl_0",
+                                    ifelse(sampleTable$condition=='unstim',
+                                           "Ctrl_16", sampleTable$condition))
+    sampleTable$condition <- gsub("-", "_", sampleTable$condition)
+    sampleTable$condition <- as.factor(sampleTable$condition)
+    sampleTable$treatment <- ifelse(str_detect(sampleTable$condition,"Ctrl"),
+                                    "control", "treated")
+    sampleTable$treatment <- as.factor(sampleTable$treatment)
+    sampleTable <- sampleTable[,c(2,17,4,5,18,3,6:16)]
+    save(sampleTable, file=file_sampleTable)
+} else {
+    load(file = file_sampleTable)
+}
+print(paste("Sample table loaded:", SampleTableFile, "-",
+            dim(sampleTable)[2], "columns for",
+            dim(sampleTable)[1], "samples:"))
+sampleTable$condition <- gsub("CD3_28", "CD3-28",
+                              gsub("Ctrl_16", "16h_Ctrl",
+                                   gsub("Ctrl_0", "0h_Ctrl", sampleTable$condition)))
+names(sampleTable)
+
+
+dds <- DESeqDataSetFromHTSeqCount(sampleTable=sampleTable,
+                                  directory= data_dir,
+                                  design=design)
 #look at object
 dds
 
