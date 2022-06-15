@@ -18,7 +18,7 @@ knitr::opts_chunk$set(tidy = FALSE,
                       cache = FALSE,
                       dev = "png",
                       message = TRUE,
-                      error = FALSE,
+                      error = TRUE,
                       echo = TRUE,
                       warning = TRUE)
 ```
@@ -45,9 +45,16 @@ graphics_dir <- file.path(dir, "graphics/")
 2. load and read file
 Roughly following the script https://git.ufz.de/rnaseq/2018_maitcellsrnaseq/-/blob/main/DE_Analysis/01_DESeq2.Rmd
 ```{r}
-count_files <- list.files(path=data_dir, pattern="MAIT_16h", full.names=TRUE)
-names(count_files) <- gsub("-htseq_counts.txt", "", basename(count_files)) # this probably shortens the names
+count_files <- list.files(path=data_dir, pattern=".txt", full.names=TRUE)#all files
 
+count_files_0h <- list.files(path=data_dir, pattern="0h", full.names=TRUE)#first timepoint which will be excluded from analysis
+count_files_K12 <- list.files(path=data_dir, pattern="K12", full.names=TRUE)#K12 treatment
+count_files_CD3 <- list.files(path=data_dir, pattern="CD3", full.names=TRUE)#CD3 treatment
+count_files_K12vsUnstim <- count_files [! count_files %in% count_files_0h]
+count_files_K12vsUnstim <- count_files_K12vsUnstim [! count_files_K12vsUnstim %in% count_files_CD3]
+
+names(count_files) <- gsub("-htseq_counts.txt", "", basename(count_files)) # this shortens the names
+names(count_files_K12vsUnstim) <- gsub("-htseq_counts.txt", "", basename(count_files_K12vsUnstim))
 SampleTableFile <- paste0(data_dir, "SampleTable_MAITseq_All.csv")
 backgroundInfo <- read.csv(SampleTableFile,  sep=",") #info about gender, age etc
 
@@ -94,19 +101,38 @@ sampleTable$condition <- gsub("CD3_28", "CD3-28",
                                    gsub("Ctrl_0", "0h_Ctrl", sampleTable$condition)))
 names(sampleTable)
 
+sampleTable_K12_unstim <- filter(sampleTable, condition=="K12" | condition=="16h_Ctrl")#table for a subset -> only K12 vs unstim
 
-dds <- DESeqDataSetFromHTSeqCount(sampleTable=sampleTable,
+```
+```{r}
+file_dds_K12 <- file.path(data_dir, "02_dds_K12")
+if(recompute){
+
+  design <- formula(~ condition)
+  dds_K12 <- DESeqDataSetFromHTSeqCount(sampleTable=sampleTable_K12_unstim,
                                   directory= data_dir,
                                   design=design)
-#look at object
-dds
+  save (dds_K12, file= file_dds_K12)
 
+
+} else {
+  load(file_dds_K12)
+}
+
+#look at object
+dds_K12
+
+```
+
+Simplify sample names
+```{r}
+#excluded for now
 ```
 3. Pre-filtering
 by excluding low count genes we reduce the memory usage of the later methods
 ```{r}
-keep <- rowSums(counts(dds)) >= 10
-dds <- dds[keep,]
+keep <- rowSums(counts(dds_K12)) >= 10
+dds_K12 <- dds[keep,]
 ```
 This reduced genes from 20500 to 20100 -> not very impressive
 
