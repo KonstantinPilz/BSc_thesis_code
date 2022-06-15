@@ -132,14 +132,17 @@ Simplify sample names
 by excluding low count genes we reduce the memory usage of the later methods
 ```{r}
 keep <- rowSums(counts(dds_K12)) >= 10
-dds_K12 <- dds[keep,]
+dds_K12 <- dds_K12[keep,]
 ```
-This reduced genes from 20500 to 20100 -> not very impressive
+reduced the genes from 100k to 150k
+
+-- Jana now gets more information on the genes, I'll skip this for now --
 
 4. set factor levels
 It may be important to define in which order the conditions are compared. (default is alphabetical order)
+not sure if this is needed here. Might return later
 ```{r}
-dds$condition <- factor(dds$condition, levels = c("T1","T2"))
+#dds$condition <- factor(dds$condition, levels = c("T1","T2"))
 ```
 The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
 5. rlog-transformation
@@ -148,47 +151,51 @@ rlog ~ regularized logarithm - normalizes on basis of library size and transform
 Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
-file_vsd <- file.path(result_dir, "01_vsd.Rdata")
-file_rld <- file.path(result_dir, "02_rld.Rdata")
+### - takes >1 min so only recompute if necessary - ###
+recompute <- FALSE
+
+file_vsd_K12 <- file.path(result_dir, "03_vsd_K12.Rdata")
+file_rld_K12 <- file.path(result_dir, "04_rld_K12.Rdata")
 if (recompute) {
-  vsd <- varianceStabilizingTransformation(dds, blind = FALSE)
-  rld <- rlog(dds, blind = FALSE)
-  save(vsd, file = file_vsd)
-  save(rld, file = file_rld)
+  vsd_K12 <- varianceStabilizingTransformation(dds_K12, blind = FALSE)
+  rld_K12 <- rlog(dds_K12, blind = FALSE)
+  save(vsd_K12, file = file_vsd_K12)
+  save(rld_K12, file = file_rld_K12)
 } else {
-  load(file = file_vsd)
-  load(file = file_rld)
+  load(file = file_vsd_K12)
+  load(file = file_rld_K12)
 }
-head(assay(rld), 3)
+head(assay(rld_K12), 3)
 
 ```
 6. Plot showing dependence of sd on mean
 ```{r}
 #plot of sd and mean
-ntd <- normTransform(dds)
+ntd_K12 <- normTransform(dds_K12)
 
-jpeg(file = file.path(graphics_dir, "01_ntd_meanSd.jpeg"))
-meanSdPlot(assay(ntd))
+jpeg(file = file.path(graphics_dir, "01_ntd_meanSd_K12.jpeg"))
+meanSdPlot(assay(ntd_K12))
 dev.off()
-jpeg(file = file.path(graphics_dir, "02_rld_meanSd.jpeg"))
-meanSdPlot(assay(rld))
+jpeg(file = file.path(graphics_dir, "02_rld_meanSd_K12.jpeg"))
+meanSdPlot(assay(rld_K12))
 dev.off()
-jpeg(file = file.path(graphics_dir, "03_vsd_meanSd.jpeg"))
-meanSdPlot(assay(vsd))
+jpeg(file = file.path(graphics_dir, "03_vsd_meanSd_K12.jpeg"))
+meanSdPlot(assay(vsd_K12))
 dev.off()
 ```
-rld has the most even mean
+For K12 vsd has the most even mean!
+
 7. Heatmap
 We need to first estimate the size factors to make it work
 ```{r}
 
-dds <- estimateSizeFactors(dds)
-select <- order(rowMeans(counts(dds, normalized = TRUE)),
+dds_K12 <- estimateSizeFactors(dds_K12)
+select <- order(rowMeans(counts(dds_K12, normalized = TRUE)),
                 decreasing = TRUE)[1:20]
-df <- as.data.frame(colData(dds)[, c("condition")])
+df <- as.data.frame(colData(dds_K12)[, c("condition")])
 #jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
 #saving the pheatmap is complex
-heatmap <- pheatmap(assay(rld)[select,], cluster_rows = FALSE, show_rownames = FALSE,
+heatmap <- pheatmap(assay(vsd_K12)[select,], cluster_rows = FALSE, show_rownames = FALSE,
                     cluster_cols = FALSE, annotation_col = df)
 save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
   stopifnot(!missing(x))
@@ -198,7 +205,7 @@ save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
   grid::grid.draw(x$gtable)
   dev.off()
 }
-save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_rld_heatmap.pdf"))
+save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_rld_heatmap_K12.pdf"))
 #dev.off()
 ```
 8. Heatmap of the sample-to-sample distances
