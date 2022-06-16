@@ -170,7 +170,7 @@ venn.plot <- venn.diagram(
   x = list(voomNSC = genes.vnsc, NSC = genes.pam, PLDA = genes.plda, PLDA2 = genes.plda2),
   height = 1200, width = 1200,
   resolution = 200,
-  filename = file.path(graphics_dir, "Selected_features.png"), imagetype = "png",
+  filename = file.path(graphics_dir, "01_Selected_features.png"), imagetype = "png",
   col = "black",
   fill = c("khaki1", "skyblue", "tomato3", "darkolivegreen3"),
   alpha = 0.50,
