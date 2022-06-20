@@ -190,16 +190,19 @@ pheatmap(sampleDistMatrix,
 ```{r}
 #sampleDists <- dist(t(assay(vsd)))
 #plot
-
-sampleDistMatrix <- as.matrix(sampleDists)
-rownames(sampleDistMatrix) <- paste(vsd$condition)
-colnames(sampleDistMatrix) <- NULL
-colors <- colorRampPalette(rev(brewer.pal(9, "Blues")))(255)
-heatmap2 <- pheatmap(sampleDistMatrix,
+if (recompute) {
+  sampleDistMatrix <- as.matrix(sampleDists)
+  rownames(sampleDistMatrix) <- paste(vsd$condition)
+  colnames(sampleDistMatrix) <- NULL
+  colors <- colorRampPalette(rev(brewer.pal(9, "Blues")))(255)
+  heatmap2 <- pheatmap(sampleDistMatrix,
                      clustering_distance_rows = sampleDists,
                      clustering_distance_cols = sampleDists,
                      col = colors)
-save_pheatmap_pdf(heatmap2, file.path(graphics_dir, "05_vsd_heatmap_sampledist.pdf"))
+  save_pheatmap_pdf(heatmap2, file.path(graphics_dir, "05_vsd_heatmap_sampledist.pdf"))
+
+}
+
 ```
 9. PCA
 Shows samples in 2D plot, the axes representing their two principal components
@@ -233,8 +236,8 @@ res
 For better visualization and gene ranking we use the method lfcShrink
 ```{r}
 resultsNames(dds)
-resLFC <- lfcShrink(dds, coef = "condition_T1vT2", type = "apeglm")
-resLFC
+#resLFC <- lfcShrink(dds, coef = "condition_T1vT2", type = "apeglm")
+#resLFC
 ```
 Error. resultsNamesDDS is not TRUE
 13. Table ordered by p-value
@@ -258,7 +261,7 @@ plotMA(res, ylim = c(-2, 2))
 ```
 This looks nothing like what I expected. I looks like it is mirrored by the y-axis and moved -1.6 into x-direction
 
-Same plot for shrunken log2 fold chages (removes noise)
+Same plot for shrunken log2 fold changes (removes noise)
 ```{r}
 plotMA(resLFC, ylim = c(-2, 2))
 ```
