@@ -44,7 +44,7 @@ graphics_dir <- file.path(dir, "graphics/")
 The cervical data set is a count matrix, to use it in DESeq2 analysis we use the method "DESeqDataSetFromMatrix" which expects the following inputs:
 A) The count matrix
 B) A data.frame/ DataFrame object
-C) A design argument that I don't fully understand but which seems to be necessary
+C) A design argument that I don't fully understand. It is used to estimate dispersion ranges
 Since there is no data.frame object provided for the cervical data, we need to provide it. To do so, we create a table containing one column for the sample number and one column for the treatment. The first 29 samples are controls, the last 29 are treated.
 ```{r}
 file <- file.path(data_dir, "cervical.rda")
@@ -64,7 +64,8 @@ dds
 
 ```
 3. Pre-filtering
-by excluding low count genes we reduce the memory usage of the later methods
+By excluding low count genes we reduce the memory usage and compute requirement of the later methods
+Note that filtering is applied when using the DESeq() function to increase statistical power
 ```{r}
 keep <- rowSums(counts(dds)) >= 10
 dds <- dds[keep,]
