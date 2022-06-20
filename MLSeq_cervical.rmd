@@ -61,7 +61,7 @@ set.seed(2128)
 
 vars <- sort(apply(cervical, 1, var, na.rm = TRUE), decreasing = TRUE)#sorting by variance. Highest: 747,902,689 Lowest: 4
 
-data <- cervical[names(vars)[1:100], ]
+data <- cervical#[names(vars)[1:100], ]
 head(data[ ,1:10])
 ```
 4. Split data into testing and training set
