@@ -29,7 +29,7 @@ library("pheatmap")
 library("RColorBrewer")
 library("ggplot2")
 ```
-Making it possible to run both on local machine as well as on cluster
+Making it possible to run both on local machine and on cluster
 ```{r}
 local <- FALSE
 recompute <- FALSE
@@ -257,7 +257,7 @@ dev.off()
 ```
 16. Export the list of genes that pass p-value
 ```{r}
-resSig <- subset(resOrdered, padj < 0.1)
+resSig <- subset(resOrdered, padj < 0.05)
 resSig
 write.csv(as.data.frame(resSig), file = file.path(results_dir, "05_results_cervical_p01_no_exclusion.csv"))
 ```

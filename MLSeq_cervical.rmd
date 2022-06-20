@@ -147,6 +147,10 @@ ooo <- order(nn, decreasing = TRUE)
 tmp.list <- tmp.list[ooo]
 #K# saving the list of genes
 capture.output(tmp.list, file = file.path(results_dir, "02_summary_sparse_classifiers.txt"))
+capture.output(genes.pam, file= file.path(results_dir, "03_pam_genes.txt"))
+capture.output(genes.plda, file= file.path(results_dir, "04_plda_genes.txt"))
+capture.output(genes.plda2, file= file.path(results_dir, "05_plda2_genes.txt"))
+capture.output(genes.vnsc, file= file.path(results_dir, "06_vnsc_genes.txt"))
 ```
 Have a look at accuracies
 
