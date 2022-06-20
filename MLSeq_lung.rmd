@@ -33,7 +33,7 @@ library(caret)
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 local <- FALSE
-recompute <- 0
+recompute <- 1
 
 prefix <- ifelse(local, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/lung_MLSeq")
@@ -44,7 +44,7 @@ graphics_dir <- file.path(dir, "graphics/")
 2. load data
 
 ```{r}
-recompute <- 0
+recompute <- 1
 input <- file.path(data_dir, "lung.csv")
 file_lung <- file.path(data_dir, "01_lung.Rdata")
 if(recompute){
@@ -68,9 +68,9 @@ We do not perform a differential expression analysis to select differentially ex
 ```{r}
 set.seed(2128)
 
-vars <- sort(apply(lung, 1, var, na.rm = TRUE), decreasing = TRUE)#sorting by variance. Highest: 747,902,689 Lowest: 4
+vars <- sort(apply(lung, 1, var, na.rm = TRUE), decreasing = TRUE)
 
-data <- lung[names(vars)[1:100], ]
+data <- lung#[names(vars)[1:1000], ]
 head(data[ ,1:10])
 ```
 4. Split data into testing and training set
@@ -116,7 +116,7 @@ deseq-rlog: Normalization with deseq median ratio method.
 Train all the sparse classifiers
 
 ```{r}
-recompute <- 0
+recompute <- 1
 # Define control lists.
 ctrl.continuous <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
 ctrl.discrete <- discreteControl(method = "repeatedcv", number = 5, repeats = 10,
@@ -173,6 +173,11 @@ ooo <- order(nn, decreasing = TRUE)
 tmp.list <- tmp.list[ooo]
 #K# saving the list of genes
 capture.output(tmp.list, file = file.path(results_dir, "02_summary_sparse_classifiers.txt"))
+capture.output(genes.pam, file= file.path(results_dir, "03_pam_genes.txt"))
+capture.output(genes.plda, file= file.path(results_dir, "04_plda_genes.txt"))
+capture.output(genes.plda2, file= file.path(results_dir, "05_plda2_genes.txt"))
+capture.output(genes.vnsc, file= file.path(results_dir, "06_vnsc_genes.txt"))
+
 ```
 Have a look at accuracies
 
