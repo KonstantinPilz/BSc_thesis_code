@@ -1,0 +1,185 @@
+---
+title: "MLSeq_cervical"
+output:
+  html_notebook:
+    toc: yes
+    theme: united
+---
+This is the analysis of the cervical data set provided by the authors of MLSeq.
+
+
+
+1. setup
+```{r}
+library(knitr)
+opts_chunk$set(tidy = FALSE,
+               dev = "pdf",
+               fig.show = "hide",
+               message = FALSE,
+               fig.align = "center",
+               cache = FALSE)
+
+```
+libraries
+```{r}
+library(MLSeq)
+library(DESeq2)
+library(edgeR)
+library(VennDiagram)
+library(pamr)
+library(caret)
+
+```
+Making it possible to run both on local machine as well as on cluster
+```{r}
+locale <- FALSE
+recompute <- TRUE
+
+prefix <- ifelse(locale, "~", "")
+dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_MLSeq")
+data_dir <- file.path(dir, "data/")
+results_dir <- file.path(dir, "results/")
+graphics_dir <- file.path(dir, "graphics/")
+```
+2. load data
+
+```{r}
+file <- file.path(data_dir, "cervical.rda")
+load(file = file)
+head(cervical[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
+
+#define class labels
+class <- DataFrame(condition = factor(rep(c("N","T"), c(29, 29))))
+class
+```
+3. pre-filtering
+The seed determines how the samples are randomized -> For reproducibility use same seed
+In particular it determines the variable ind
+We do not perform a differential expression analysis to select differentially expressed genes. However, in practice, DE analysis might be performed before fitting classifiers. Here, we selected top 100 features having the highest gene-wise variances in order to decrease computational cost.
+```{r}
+set.seed(2128)
+
+vars <- sort(apply(cervical, 1, var, na.rm = TRUE), decreasing = TRUE)#sorting by variance. Highest: 747,902,689 Lowest: 4
+
+data <- cervical#[names(vars)[1:100], ]
+head(data[ ,1:10])
+```
+4. Split data into testing and training set
+Since we want to build a classification model, we need training data.
+After training, we need more data to assess the performance
+
+It is important to split the data in a good ratio. Default is 70% training.
+If we set it to e.g. 90% for this small sample, there would be only 6 samples
+left for testing. A single unit missclassification, which the model is
+sensitive to would result in an accuracy loss of 17%
+```{r}
+nTest <- ceiling(ncol(data) * 0.3) #K# ncol: number of columns in an array
+ind <- sample(ncol(data), nTest, FALSE) #K# This is randomizing the samples
+
+# Minimum count is set to 1 in order to prevent 0 division problem within
+# classification models.
+data.train <- as.matrix(data[ ,-ind] + 1) #K# ind is a collection of nTest samples
+#K# training data: all data except for ind -> 70% -> 40 samples
+data.test <- as.matrix(data[ ,ind] + 1)#K# all lines (genes) of the matrix, but only the columns specified in ind
+#K# test data: the remaining data -> ind -> 30% -> 18 samples
+
+#?# Why this class type?
+#K# I think it contains the classification of each sample
+classtr <- DataFrame(condition = class[-ind, ])
+classts <- DataFrame(condition = class[ind, ])
+
+#DESeqDataSets, input for MLSeq
+data.trainS4 = DESeqDataSetFromMatrix(countData = data.train,
+                                      colData = classtr,
+                                      design = formula(~condition))
+data.testS4 = DESeqDataSetFromMatrix(countData = data.test,
+                                     colData = classts,
+                                     design = formula(~condition))
+
+```
+5. Training classifiers
+First, the data is normalized using one of four methods
+deseq-rlog: Normalization with deseq median ratio method.
+
+6. 93 training methods can be used to train classifiers
+> availableMethods() to see them
+
+Train all the sparse classifiers
+
+```{r}
+
+# Define control lists.
+ctrl.continuous <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
+ctrl.discrete <- discreteControl(method = "repeatedcv", number = 5, repeats = 10,
+                             tuneLength = 10)
+ctrl.voom <- voomControl(method = "repeatedcv", number = 5, repeats = 10,
+                             tuneLength = 10)
+#continuous
+fit.NSC <- classify(data = data.trainS4, method = "pam",
+                 preProcessing = "deseq-vst", ref = "T", tuneLength = 10,
+                 control = ctrl.continuous)
+
+#discrete
+fit.plda <- classify(data = data.trainS4, method = "PLDA", normalize = "deseq",
+                     ref = "T", control = ctrl.discrete)
+
+fit.plda2 <- classify(data = data.trainS4, method = "PLDA2", normalize = "deseq",
+                     ref = "T", control = ctrl.discrete)
+
+#voom-based
+fit.voomNSC <- classify(data = data.trainS4, method = "voomNSC",
+                         normalize = "deseq", ref = "T", control = ctrl.voom)
+
+pam.final <- trained(fit.NSC)$finalModel   ## 'pamrtrained' object.
+geneIdx <- pamr:::pamr.predict(pam.final, pam.final$xData, threshold = pam.final$threshold, type = "nonzero")
+
+genes.pam <- colnames(pam.final$xData)[geneIdx]
+genes.plda <- selectedGenes(fit.plda)
+genes.plda2 <- selectedGenes(fit.plda2)
+genes.vnsc <- selectedGenes(fit.voomNSC)
+
+tmp.list <- list(genes.pam, genes.plda, genes.plda2, genes.vnsc)
+
+
+nn <- c(length(genes.pam), length(genes.plda), length(genes.plda2), length(genes.vnsc))
+ooo <- order(nn, decreasing = TRUE)
+
+tmp.list <- tmp.list[ooo]
+#K# saving the list of genes
+capture.output(tmp.list, file = file.path(results_dir, "02_summary_sparse_classifiers.txt"))
+capture.output(genes.pam, file= file.path(results_dir, "03_pam_genes.txt"))
+capture.output(genes.plda, file= file.path(results_dir, "04_plda_genes.txt"))
+capture.output(genes.plda2, file= file.path(results_dir, "05_plda2_genes.txt"))
+capture.output(genes.vnsc, file= file.path(results_dir, "06_vnsc_genes.txt"))
+```
+Have a look at accuracies
+
+```{r}
+show(fit.NSC)
+show(fit.plda)
+show(fit.plda2)
+show(fit.voomNSC)
+```
+venn diagram of selected features by sparse classifiers
+```{r}
+common <- tmp.list[[1]]
+for (i in 2:(length(tmp.list))){
+  tmp2 <- tmp.list[[i]]
+  tmp <- common[common %in% tmp2]
+  common <- tmp
+}
+
+## ----venn_diagram, echo = FALSE-----------------------------------------------
+venn.plot <- venn.diagram(
+  x = list(voomNSC = genes.vnsc, NSC = genes.pam, PLDA = genes.plda, PLDA2 = genes.plda2),
+  height = 1200, width = 1200,
+  resolution = 200,
+  filename = file.path(graphics_dir, "01_Selected_features.png"), imagetype = "png",
+  col = "black",
+  fill = c("khaki1", "skyblue", "tomato3", "darkolivegreen3"),
+  alpha = 0.50,
+  cat.cex = 1.2,
+  cex = 1.5,
+  cat.fontface = "bold"
+)
+```
