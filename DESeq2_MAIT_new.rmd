@@ -1,0 +1,352 @@
+---
+title: "DESeq2_lung"
+output:
+  html_notebook:
+    toc: yes
+    theme: united
+---
+https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+This is the analysis of the MAIT project using DESeq2.
+
+
+
+1. setup
+
+```{r, eval = FALSE}
+## ----setup, echo=FALSE, results="hide"----------------------------------------
+knitr::opts_chunk$set(tidy = FALSE,
+                      cache = FALSE,
+                      dev = "png",
+                      message = TRUE,
+                      error = TRUE,
+                      echo = TRUE,
+                      warning = TRUE)
+```
+```{r}
+library("DESeq2")
+library("vsn")
+library("hexbin")
+library("pheatmap")
+library("RColorBrewer")
+library("ggplot2")
+library("tidyverse")
+```
+Making it possible to run both on local machine as well as on cluster
+```{r}
+locale <- FALSE
+recompute <- FALSE
+
+prefix <- ifelse(locale, "~", "")
+dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_DESeq2")
+data_dir <- file.path(dir, "data/")
+result_dir <- file.path(dir, "results/")
+graphics_dir <- file.path(dir, "graphics/")
+```
+2. load and read file
+Roughly following the script https://git.ufz.de/rnaseq/2018_maitcellsrnaseq/-/blob/main/DE_Analysis/01_DESeq2.Rmd
+```{r}
+count_files <- list.files(path=data_dir, pattern=".txt", full.names=TRUE)#all files
+
+count_files_0h <- list.files(path=data_dir, pattern="0h", full.names=TRUE)#first timepoint which will be excluded from analysis
+count_files_K12 <- list.files(path=data_dir, pattern="K12", full.names=TRUE)#K12 treatment
+count_files_CD3 <- list.files(path=data_dir, pattern="CD3", full.names=TRUE)#CD3 treatment
+count_files_K12vsUnstim <- count_files [! count_files %in% count_files_0h]
+count_files_K12vsUnstim <- count_files_K12vsUnstim [! count_files_K12vsUnstim %in% count_files_CD3]
+
+names(count_files) <- gsub("-htseq_counts.txt", "", basename(count_files)) # this shortens the names
+names(count_files_K12vsUnstim) <- gsub("-htseq_counts.txt", "", basename(count_files_K12vsUnstim))
+SampleTableFile <- paste0(data_dir, "SampleTable_MAITseq_All.csv")
+backgroundInfo <- read.csv(SampleTableFile,  sep=",") #info about gender, age etc
+
+
+
+file_sampleTable <- file.path(result_dir, "01_sampleTable")
+
+if(recompute) {
+    STcolsOfInterest <- c(1:16)
+    STcolsAsFactors <- c(4,8,9,12,16)
+
+    sT <- read.table(SampleTableFile, header=T, sep=",", stringsAsFactors = FALSE)
+    for(i in STcolsAsFactors)
+    { #select requested columns
+      sT[,i] <- as.factor(sT[,i])
+    }
+    sT <- sT[,STcolsOfInterest]
+    sampleTable <- sT
+    colnames(sampleTable)[c(2,4,5)] <- c("sampleName", "time", "condition")
+    rownames(sampleTable) <- sampleTable$sampleName
+    sampleTable$time <- as.factor(paste0(sampleTable$time, "h"))
+    # fileName is required by DESeq2 function
+    rows <- match(names(count_files), rownames(sampleTable))
+    sampleTable$fileName[rows] <- basename(count_files)
+    # formatting condition etc.
+    sampleTable$condition <- ifelse(sampleTable$condition=='-', "Ctrl_0",
+                                    ifelse(sampleTable$condition=='unstim',
+                                           "Ctrl_16", sampleTable$condition))
+    sampleTable$condition <- gsub("-", "_", sampleTable$condition)
+    sampleTable$condition <- as.factor(sampleTable$condition)
+    sampleTable$treatment <- ifelse(str_detect(sampleTable$condition,"Ctrl"),
+                                    "control", "treated")
+    sampleTable$treatment <- as.factor(sampleTable$treatment)
+    sampleTable <- sampleTable[,c(2,17,4,5,18,3,6:16)]
+    save(sampleTable, file=file_sampleTable)
+} else {
+    load(file = file_sampleTable)
+}
+print(paste("Sample table loaded:", SampleTableFile, "-",
+            dim(sampleTable)[2], "columns for",
+            dim(sampleTable)[1], "samples:"))
+sampleTable$condition <- gsub("CD3_28", "CD3-28",
+                              gsub("Ctrl_16", "16h_Ctrl",
+                                   gsub("Ctrl_0", "0h_Ctrl", sampleTable$condition)))
+names(sampleTable)
+
+sampleTable_K12_unstim <- filter(sampleTable, condition=="K12" | condition=="16h_Ctrl")#table for a subset -> only K12 vs unstim
+
+```
+```{r}
+file_dds_K12 <- file.path(data_dir, "02_dds_K12")
+if(recompute){
+
+  design <- formula(~ condition)
+  dds_K12 <- DESeqDataSetFromHTSeqCount(sampleTable=sampleTable_K12_unstim,
+                                  directory= data_dir,
+                                  design=design)
+  save (dds_K12, file= file_dds_K12)
+
+
+} else {
+  load(file_dds_K12)
+}
+
+#look at object
+dds_K12
+
+```
+
+Simplify sample names
+```{r}
+#excluded for now
+```
+3. Pre-filtering
+by excluding low count genes we reduce the memory usage of the later methods
+```{r}
+keep <- rowSums(counts(dds_K12)) >= 10
+dds_K12 <- dds_K12[keep,]
+```
+reduced the genes from 100k to 150k
+
+-- Jana now gets more information on the genes, I'll skip this for now --
+
+4. set factor levels
+It may be important to define in which order the conditions are compared. (default is alphabetical order)
+not sure if this is needed here. Might return later
+```{r}
+#dds$condition <- factor(dds$condition, levels = c("T1","T2"))
+```
+The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
+5. rlog-transformation
+You do this if you don't want to do DE but visualization and clustering instead. Main point is to remove the high variance for low means
+rlog ~ regularized logarithm - normalizes on basis of library size and transforms data to log2 scale
+Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
+(For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
+```{r}
+### - takes >1 min so only recompute if necessary - ###
+recompute <- FALSE
+
+file_vsd_K12 <- file.path(result_dir, "03_vsd_K12.Rdata")
+file_rld_K12 <- file.path(result_dir, "04_rld_K12.Rdata")
+if (recompute) {
+  vsd_K12 <- varianceStabilizingTransformation(dds_K12, blind = FALSE)
+  rld_K12 <- rlog(dds_K12, blind = FALSE)
+  save(vsd_K12, file = file_vsd_K12)
+  save(rld_K12, file = file_rld_K12)
+} else {
+  load(file = file_vsd_K12)
+  load(file = file_rld_K12)
+}
+head(assay(rld_K12), 3)
+
+```
+6. Plot showing dependence of sd on mean
+```{r}
+#plot of sd and mean
+ntd_K12 <- normTransform(dds_K12)
+
+jpeg(file = file.path(graphics_dir, "01_ntd_meanSd_K12.jpeg"))
+meanSdPlot(assay(ntd_K12))
+dev.off()
+jpeg(file = file.path(graphics_dir, "02_rld_meanSd_K12.jpeg"))
+meanSdPlot(assay(rld_K12))
+dev.off()
+jpeg(file = file.path(graphics_dir, "03_vsd_meanSd_K12.jpeg"))
+meanSdPlot(assay(vsd_K12))
+dev.off()
+```
+For K12 vsd has the most even mean!
+
+8. Heatmap of the sample-to-sample distances
+
+
+from Jana:
+```{r def.colors.samples}
+# the colors for the samples
+# condition -> oranges
+colCondition <- brewer.pal(n=4, name='Purples')
+names(colCondition) <- c("0h_Ctrl", "16h_Ctrl", "CD3-28", "K12")
+# treatment -> reds
+colSamples <- c("control" = "#FC9272", "treated" = "#DE2D26")
+# time -> blues
+colTime <- c("0h" = "#9ECAE1", "16h" = "#3182BD")
+#l <- length(unique(bmTable.combined$my_biotype))
+# the colors for the genes
+#colMyBiotypes <- brewer.pal(l, "Set1")
+#names(colMyBiotypes) <- unique(bmTable.combined$my_biotype)
+# define specific colors for the biotypes
+colMyBiotypes <- c(#"other_ncRNA"   = "#23872f", # green
+                   #"shortRNA"      = "#41f256", # pale green
+                   "protein_coding"= "#42f4ce", # turquoise
+                   "lncRNA"        = "#d81e1e", # red
+                   #"pseudogene"    = "#1e81d8", # lightblue
+                   "new_transcript" = "orange", #"#872323", # darkred
+                   "other"    = "gray80" #"#BDBDBD" # grey
+)
+ann_colors <- list(condition = colCondition,
+                   treatment = colSamples,
+                   time = colTime,
+                   biotype = colMyBiotypes)
+```
+```{r}
+sampleDists <- dist(t(assay(vsd_K12)))
+sampleDistMatrix <- as.matrix(sampleDists)
+
+# annotation of rows
+rows <- match(rownames(sampleDistMatrix), rownames(sampleTable))
+annotation <- data.frame(treatment = sampleTable$treatment[rows])
+rownames(annotation) <- rownames(sampleDistMatrix)
+# heatmap colors
+colors <- colorRampPalette( rev(brewer.pal(9, "Greys")) )(255)
+# save heatmap in image file
+file <- paste0(graphics_dir, "04_heatmap_s2s-distance_K12.pdf")
+pheatmap(sampleDistMatrix,
+         color=colors,
+         border_color = NA,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         treeheight_row = 20,
+         treeheight_col = 20,
+         legend = T,
+         cellwidth=10,
+         cellheight=10,
+         annotation_row = annotation,
+         annotation_col = annotation,
+         annotation_colors = ann_colors,
+         show_colnames = T,
+         main=paste0("Sample-2-sample distance of (rlog-)transformed count data\n"),
+         filename=file)
+```
+looks as expected
+
+An additional heatmap that I have not yet understood. Will not include it for now.
+```{r}
+
+#dds_K12 <- estimateSizeFactors(dds_K12)
+#select <- order(rowMeans(counts(dds_K12, normalized = TRUE)),
+#                decreasing = TRUE)[1:20]
+#df <- as.data.frame(colData(dds_K12)[, c("condition")])
+#jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
+#saving the pheatmap is complex
+#heatmap <- pheatmap(assay(vsd_K12)[select,], cluster_rows = FALSE, show_rownames = FALSE,
+#                    cluster_cols = FALSE, annotation_col = df)
+save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
+  stopifnot(!missing(x))
+  stopifnot(!missing(filename))
+  pdf(filename, width = width, height = height)
+  grid::grid.newpage()
+  grid::grid.draw(x$gtable)
+  dev.off()
+}
+#save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_rld_heatmap_K12.pdf"))
+#dev.off()
+```
+
+
+9. PCA
+Shows samples in 2D plot, the axes representing their two principal components
+```{r}
+
+jpeg(file=file.path(graphics_dir, "05_vsd_K12_PCA.jpeg"))
+plotPCA(vsd_K12)
+dev.off()
+```
+Looks fine, no outliers
+Clustering is completed.
+
+13. Standard differential expression analysis
+This method goes through all steps of DESeq2 and gives results.
+```{r}
+recompute = TRUE
+file_res_K12 <- file.path(result_dir, "05_res_K12.Rdata")
+file_dds_K12 <- file.path(result_dir, "06_dds_K12.Rdata")
+if (recompute) {
+  dds_K12 <- DESeq(dds_K12)
+  res_K12 <- results(dds_K12)
+  save(dds_K12, file = file_dds_K12)
+  save(res_K12, file = file_res_K12)
+} else {
+  load(file = file_dds_K12)
+  load(file = file_res_K12)
+}
+
+res_K12
+```
+12. Perform LFC transformation
+For better visualization and gene ranking we use the method lfcShrink
+Jana does not use this, so will exclude for now
+```{r}
+#resultsNames(dds_K12)
+#resLFC_K12 <- lfcShrink(dds_K12, coef = "condition_treated_vs_untreated", type = "apeglm")
+#resLFC_K12
+```
+Error. resultsNamesDDS is not TRUE
+
+13. Table ordered by p-value
+For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
+Finally, we can get a results table.
+```{r}
+resOrdered_K12 <- res_K12[order(res_K12$pvalue),]
+resOrdered_K12
+summary(res_K12)
+#How many below 0.1?
+sum(res_K12$padj < 0.1, na.rm = TRUE)
+#results table
+res05_K12 <- results(dds_K12, alpha = 0.05)
+summary(res05_K12)
+sum(res05_K12$padj < 0.05, na.rm = TRUE)
+```
+(optional) Independent hypothesis weighting
+14. MA-plot
+```{r}
+#plotMA(res_K12, ylim = c(-2, 2))
+```
+crashes --> excluded
+
+Same plot for shrunken log2 fold chages (removes noise)
+```{r}
+#plotMA(resLFC, ylim = c(-2, 2))
+```
+Does not work due to Error in 12
+15. Plot counts for individual genes
+```{r}
+jpeg(file = file.path(graphics_dir, "06_counts_per_gene"))
+plotCounts(dds_K12, gene = which.min(res$padj), intgroup = "condition")
+dev.off()
+
+```
+16. Export the list of genes that pass p-value
+
+```{r}
+resSig_K12 <- subset(resOrdered_K12, padj < 0.1)
+resSig_K12
+write.csv(as.data.frame(resSig_K12), file = file.path(result_dir, "07_results_K12_p01_no_exclusion"))
+```
