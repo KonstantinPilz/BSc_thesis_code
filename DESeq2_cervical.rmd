@@ -1,0 +1,154 @@
+---
+title: "DESeq2_cervical
+output: html_DESeq2_cervical
+---
+https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+This is the analysis of the cervical data set provided by the authors of MLSeq using DESeq2.
+
+
+
+1. load libraries
+
+```{r}
+## ----setup, echo=FALSE, results="hide"----------------------------------------
+knitr::opts_chunk$set(tidy = FALSE,
+                      cache = FALSE,
+                      dev = "png",
+                      message = FALSE, error = FALSE, warning = TRUE)
+library("DESeq2")
+```
+2. load and read file
+The cervical data set is a count matrix, to use it in DESeq2 analysis we use the method "DESeqDataSetFromMatrix" which expects the following inputs:
+A) The count matrix
+B) A data.frame/ DataFrame object
+C) A design argument that I don't fully understand but which seems to be necessary
+Since there is no data.frame object provided for the cervical data, we need to provide it. To do so, we create a table containing one column for the sample number and one column for the treatment. The first 29 samples are controls, the last 29 are treated.
+```{r}
+load(file="/home/pilz/data/MLSeq_original_data/cervical.rda")
+#creating the data.frame object
+class <- data.frame(condition = factor(rep(c("untreated","treated"), c(29, 29))))
+#colnames(cervical) <- 1:58 #replacing name of columns so they match data.frame
+#optional: check data.frame object and beginning of the data
+class
+head(cervical)
+#read the data into a DESeqDataSet
+dds <- DESeqDataSetFromMatrix(countData = cervical,
+                              colData = class,
+                              design = ~ condition)
+#look at object
+dds
+
+```
+3. Pre-filtering
+by excluding low count genes we reduce the memory usage of the later methods
+```{r}
+keep <- rowSums(counts(dds)) >= 10
+dds <- dds[keep,]
+```
+4. set factor levels
+It may be important to make sure in which order the conditions are compared. (default is alphabetical order)
+```{r}
+dds$condition <- factor(dds$condition, levels = c("untreated","treated"))
+```
+The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
+5. rlog-transformation
+Apparently, you do this if you don't want to do DE but visualization and clustering instead. Main point is to remove the high variance for low means
+rlog ~ regularized logarithm - normalizes on basis of library size and transforms data to log2 scale
+(For a big number of samples there is an alternative: VST ~  variance stabilizing transformations)
+```{r}
+rld <- rlog(dds, blind=FALSE)
+head(assay(rld), 3)
+
+```
+6. Plot showing dependence of sd on mean
+```{r}
+#plot of sd and mean
+library("vsn")
+meanSdPlot(assay(rld))
+```
+This is not what I expected. The sd should be normalized -> about equal for any mean
+7. Heatmap
+```{r}
+library("pheatmap")
+select <- order(rowMeans(counts(dds,normalized=TRUE)),
+                decreasing=TRUE)[1:20]
+df <- as.data.frame(colData(dds)[,c("condition")])
+pheatmap(assay(rld)[select,], cluster_rows=FALSE, show_rownames=FALSE,
+         cluster_cols=FALSE, annotation_col=df)
+```
+8. Heatmap of the sample-to-sample distances
+sampleDists gives distances
+creating plot with RColorBrewer and pheatmap
+```{r}
+sampleDists <- dist(t(assay(rld)))
+#plot
+library("RColorBrewer")
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(rld$condition)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
+
+```
+9. PCA
+Shows samples in 2D plot, the axes representing their two principal components
+```{r}
+plotPCA(rld, intgroup=c("condition"))
+```
+10. Exlude samples
+...
+11. Standard differential expression analysis
+This method goes through all steps of DESeq2 and gives results.
+```{r}
+dds <- DESeq(dds)
+res <- results(dds)
+res
+```
+12. Perform LFC transformation
+For better visualization and gene ranking we use the method lfcShrink
+```{r}
+resultsNames(dds)
+resLFC <- lfcShrink(dds, coef="condition_treated_vs_untreated", type="apeglm")
+resLFC
+```
+Error. resultsNamesDDS is not TRUE
+13. Table ordered by p-value
+For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
+Finally, we can get a results table.
+```{r}
+resOrdered <- res[order(res$pvalue),]
+resOrdered
+summary(res)
+#How many below 0.1?
+sum(res$padj < 0.1, na.rm=TRUE)
+#results table
+res05 <- results(dds, alpha=0.05)
+summary(res05)
+sum(res05$padj < 0.05, na.rm=TRUE)
+```
+(optional) Independend hypothesis weighting
+14. MA-plot
+```{r}
+plotMA(res, ylim=c(-2,2))
+```
+This looks nothing like what I expected. I looks like it is mirrored by the y-axis and moved -1.6 into x-direction
+
+Same plot for shrunken log2 fold chages (removes noise)
+```{r}
+plotMA(resLFC, ylim=c(-2,2))
+```
+Does not work due to Error in 12
+15. Plot counts for individual genes
+```{r}
+plotCounts(dds, gene=which.min(res$padj), intgroup="condition")
+```
+16. Export the list of genes that pass p-value
+Why can I not run this code chunk?
+```{r}
+resSig <- subset(resOrdered, padj < 0.1)
+resSig
+write.csv(as.data.frame(resSig), file="results_cervical_p01_no_exlclusion")
+```
