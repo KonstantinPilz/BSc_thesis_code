@@ -1,0 +1,315 @@
+---
+title: "MLSeq_MAIT"
+output:
+  html_notebook:
+    toc: yes
+    theme: united
+---
+This is the analysis of the cervical data set provided by the authors of MLSeq.
+
+
+
+1. setup
+```{r}
+library(knitr)
+opts_chunk$set(tidy = FALSE,
+               dev = "pdf",
+               fig.show = "hide",
+               message = FALSE,
+               fig.align = "center",
+               cache = FALSE)
+
+```
+libraries
+```{r}
+library(MLSeq)
+library(DESeq2)
+library(edgeR)
+library(VennDiagram)
+library(pamr)
+library(caret)
+library("hexbin")
+library("pheatmap")
+library("RColorBrewer")
+library("ggplot2")
+library("tidyverse")
+
+```
+Making it possible to run both on local machine as well as on cluster
+```{r}
+local <- FALSE
+recompute <- 1
+
+prefix <- ifelse(local, "~", "")
+dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_MLSeq")
+data_dir <- file.path(dir, "data/")
+result_dir <- file.path(dir, "results/")
+graphics_dir <- file.path(dir, "graphics/")
+```
+2. load data
+```{r}
+count_files <- list.files(path=data_dir, pattern=".txt", full.names=TRUE)#all files
+
+count_files_0h <- list.files(path=data_dir, pattern="0h", full.names=TRUE)#first timepoint which will be excluded from analysis
+count_files_K12 <- list.files(path=data_dir, pattern="K12", full.names=TRUE)#K12 treatment
+count_files_CD3 <- list.files(path=data_dir, pattern="CD3", full.names=TRUE)#CD3 treatment
+count_files_K12vsUnstim <- count_files [! count_files %in% count_files_0h]
+count_files_K12vsUnstim <- count_files_K12vsUnstim [! count_files_K12vsUnstim %in% count_files_CD3]
+
+names(count_files) <- gsub("-htseq_counts.txt", "", basename(count_files)) # this shortens the names
+names(count_files_K12vsUnstim) <- gsub("-htseq_counts.txt", "", basename(count_files_K12vsUnstim))
+SampleTableFile <- paste0(data_dir, "SampleTable_MAITseq_All.csv")
+backgroundInfo <- read.csv(SampleTableFile,  sep=",") #info about gender, age etc
+
+
+
+file_sampleTable <- file.path(result_dir, "01_sampleTable")
+
+if(recompute) {
+    STcolsOfInterest <- c(1:16)
+    STcolsAsFactors <- c(4,8,9,12,16)
+
+    sT <- read.table(SampleTableFile, header=T, sep=",", stringsAsFactors = FALSE)
+    for(i in STcolsAsFactors)
+    { #select requested columns
+      sT[,i] <- as.factor(sT[,i])
+    }
+    sT <- sT[,STcolsOfInterest]
+    sampleTable <- sT
+    colnames(sampleTable)[c(2,4,5)] <- c("sampleName", "time", "condition")
+    rownames(sampleTable) <- sampleTable$sampleName
+    sampleTable$time <- as.factor(paste0(sampleTable$time, "h"))
+    # fileName is required by DESeq2 function
+    rows <- match(names(count_files), rownames(sampleTable))
+    sampleTable$fileName[rows] <- basename(count_files)
+    # formatting condition etc.
+    sampleTable$condition <- ifelse(sampleTable$condition=='-', "Ctrl_0",
+                                    ifelse(sampleTable$condition=='unstim',
+                                           "Ctrl_16", sampleTable$condition))
+    sampleTable$condition <- gsub("-", "_", sampleTable$condition)
+    sampleTable$condition <- as.factor(sampleTable$condition)
+    sampleTable$treatment <- ifelse(str_detect(sampleTable$condition,"Ctrl"),
+                                    "control", "treated")
+    sampleTable$treatment <- as.factor(sampleTable$treatment)
+    sampleTable <- sampleTable[,c(2,17,4,5,18,3,6:16)]
+    save(sampleTable, file=file_sampleTable)
+} else {
+    load(file = file_sampleTable)
+}
+print(paste("Sample table loaded:", SampleTableFile, "-",
+            dim(sampleTable)[2], "columns for",
+            dim(sampleTable)[1], "samples:"))
+sampleTable$condition <- gsub("CD3_28", "CD3-28",
+                              gsub("Ctrl_16", "16h_Ctrl",
+                                   gsub("Ctrl_0", "0h_Ctrl", sampleTable$condition)))
+names(sampleTable)
+
+sampleTable_K12_unstim <- filter(sampleTable, condition=="K12" | condition=="16h_Ctrl")#table for a subset -> only K12 vs unstim
+
+```
+creating the count table for K12
+```{r}
+file_dds_K12 <- file.path(data_dir, "02_dds_K12")
+if(recompute){
+
+  design <- formula(~ condition)
+  dds_K12 <- DESeqDataSetFromHTSeqCount(sampleTable=sampleTable_K12_unstim,
+                                  directory= data_dir,
+                                  design=design)
+  save (dds_K12, file= file_dds_K12)
+
+
+} else {
+  load(file_dds_K12)
+}
+#write.table(assay(dds_K12), file = file.path (result_dir, "03_count_data.txt", sep=";"))
+count <- assay(dds_K12) # I recreated to count table from the dds for the following steps in the MLSeq workflow
+#look at object
+count <- count[,c(1,3,5,7,9,2,4,6,8,10)]
+
+head(count)
+
+
+class <- data.frame(condition = factor(rep(c("T","C"), c(5, 5))))
+colnames(count) <- 1:10
+```
+3. pre-filtering
+The seed determines how the samples are randomized -> For reproducibility use same seed
+In particular it determines the variable ind
+We do not perform a differential expression analysis to select differentially expressed genes. However, in practice, DE analysis might be performed before fitting classifiers. Here, we selected top 100 features having the highest gene-wise variances in order to decrease computational cost.
+```{r}
+set.seed(2128)
+
+vars <- sort(apply(count, 1, var, na.rm = TRUE), decreasing = TRUE)
+
+data <- count#[names(vars)[1:1000], ]
+head(data[ ,1:10])
+```
+4. Split data into testing and training set
+Since we want to build a classification model, we need training data.
+After training, we need more data to assess the performance
+
+Since it's only 10 samples, let's split into 80/20 for now
+```{r}
+nTest <- ceiling(ncol(data) * 0.2)
+ind <- sample(ncol(data), nTest, FALSE) #K# This is randomizing the samples
+
+# Minimum count is set to 1 in order to prevent 0 division problem within
+# classification models.
+data.train <- as.matrix(data[ ,-ind] + 1) #K# ind is a collection of nTest samples
+#K# training data: all data except for ind -> 70% -> 40 samples
+data.test <- as.matrix(data[ ,ind] + 1)#K# all lines (genes) of the matrix, but only the columns specified in ind
+#K# test data: the remaining data -> ind -> 30% -> 18 samples
+
+#?# Why this class type?
+#K# I think it contains the classification of each sample
+classtr <- DataFrame(condition = class[-ind, ])
+classts <- DataFrame(condition = class[ind, ])
+
+#DESeqDataSets, input for MLSeq
+data.trainS4 = DESeqDataSetFromMatrix(countData = data.train,
+                                      colData = classtr,
+                                      design = ~1)
+data.testS4 = DESeqDataSetFromMatrix(countData = data.test,
+                                     colData = classts,
+                                     design = ~1)
+
+```
+5. Training classifiers
+First, the data is normalized using one of four methods
+deseq-rlog: Normalization with deseq median ratio method.
+
+6. 93 training methods can be used to train classifiers
+> availableMethods() to see them
+
+Train all the sparse classifiers
+
+```{r}
+recompute <- 1
+# Define control lists.
+ctrl.continuous <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
+ctrl.discrete <- discreteControl(method = "repeatedcv", number = 5, repeats = 10,
+                             tuneLength = 10)
+ctrl.voom <- voomControl(method = "repeatedcv", number = 5, repeats = 10,
+                             tuneLength = 10)
+
+file_NSC <- file.path(data_dir, "02_NSC.Rdata")
+file_plda <- file.path(data_dir, "03_plda.Rdata")
+file_plda2<- file.path(data_dir, "04_plda2.Rdata")
+file_voomNSC <- file.path(data_dir, "05_voomNSC.Rdata")
+```
+```{r}
+if (recompute){
+  #continuous
+  fit.NSC <- classify(data = data.trainS4, method = "pam",
+                 preProcessing = "deseq-vst", ref = "C", tuneLength = 10,
+                 control = ctrl.continuous)
+  save(fit.NSC, file = file_NSC)
+} else {
+    load(file_NSC)
+}
+print("done")
+pam.final <- trained(fit.NSC)$finalModel   ## 'pamrtrained' object.
+geneIdx <- pamr:::pamr.predict(pam.final, pam.final$xData, threshold = pam.final$threshold, type = "nonzero")
+
+genes.pam <- colnames(pam.final$xData)[geneIdx]
+```
+```{r}
+if (recompute){
+
+  #discrete
+  fit.plda <- classify(data = data.trainS4, method = "PLDA", normalize = "deseq",
+                     ref = "C", control = ctrl.discrete)
+  save(fit.plda, file = file_plda)
+} else {
+    load(file_plda)
+}
+print("done")
+```
+```{r}
+if (recompute){
+
+  #discrete
+
+
+  fit.plda2 <- classify(data = data.trainS4, method = "PLDA2", normalize = "deseq",
+                     ref = "C", control = ctrl.discrete)
+  save(fit.plda2, file =file_plda2)
+} else {
+
+  load(file_plda2)
+}
+print("done")
+```
+```{r}
+
+
+if (recompute){
+  #voom-based
+  fit.voomNSC <- classify(data = data.trainS4, method = "voomNSC",
+                         normalize = "deseq", ref = "C", control = ctrl.voom)
+
+  save(fit.voomNSC, file= file_voomNSC)
+
+} else {
+
+  load(file_voomNSC)
+}
+print("done")MLSeq_lung.rmd
+```
+
+```{r}
+pam.final <- trained(fit.NSC)$finalModel   ## 'pamrtrained' object.
+geneIdx <- pamr:::pamr.predict(pam.final, pam.final$xData, threshold = pam.final$threshold, type = "nonzero")
+
+genes.pam <- colnames(pam.final$xData)[geneIdx]
+genes.plda <- selectedGenes(fit.plda)
+genes.plda2 <- selectedGenes(fit.plda2)
+genes.vnsc <- selectedGenes(fit.voomNSC)
+
+tmp.list <- list(genes.pam, genes.plda, genes.plda2, genes.vnsc)
+
+
+nn <- c(length(genes.pam), length(genes.plda), length(genes.plda2), length(genes.vnsc))
+ooo <- order(nn, decreasing = TRUE)
+
+tmp.list <- tmp.list[ooo]
+#K# saving the list of genes
+capture.output(tmp.list, file = file.path(results_dir, "02_summary_sparse_classifiers.txt"))
+capture.output(genes.pam, file= file.path(results_dir, "03_pam_genes.txt"))
+capture.output(genes.plda, file= file.path(results_dir, "04_plda_genes.txt"))
+capture.output(genes.plda2, file= file.path(results_dir, "05_plda2_genes.txt"))
+capture.output(genes.vnsc, file= file.path(results_dir, "06_vnsc_genes.txt"))
+
+```
+Have a look at accuracies
+
+```{r}
+show(fit.NSC)
+show(fit.plda)
+show(fit.plda2)
+show(fit.voomNSC)
+```
+venn diagram of selected features by sparse classifiers
+```{r}
+common <- tmp.list[[1]]
+for (i in 2:(length(tmp.list))){
+  tmp2 <- tmp.list[[i]]
+  tmp <- common[common %in% tmp2]
+  common <- tmp
+}
+
+## ----venn_diagram, echo = FALSE-----------------------------------------------
+venn.plot <- venn.diagram(
+  x = list(voomNSC = genes.vnsc, NSC = genes.pam, PLDA = genes.plda, PLDA2 = genes.plda2),
+  height = 1200, width = 1200,
+  resolution = 200,
+  filename = file.path(graphics_dir, "01_Selected_features.png"), imagetype = "png",
+  col = "black",
+  fill = c("khaki1", "skyblue", "tomato3", "darkolivegreen3"),
+  alpha = 0.50,
+  cat.cex = 1.2,
+  cex = 1.5,
+  cat.fontface = "bold"
+)
+```
