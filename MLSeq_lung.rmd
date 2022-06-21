@@ -128,34 +128,64 @@ file_NSC <- file.path(data_dir, "02_NSC.Rdata")
 file_plda <- file.path(data_dir, "03_plda.Rdata")
 file_plda2<- file.path(data_dir, "04_plda2.Rdata")
 file_voomNSC <- file.path(data_dir, "05_voomNSC.Rdata")
+```
+```{r}
 if (recompute){
   #continuous
   fit.NSC <- classify(data = data.trainS4, method = "pam",
                  preProcessing = "deseq-vst", ref = "T1", tuneLength = 10,
                  control = ctrl.continuous)
+  save(fit.NSC, file = file_NSC)
+} else {
+    load(file_NSC)
+}
+print("done")
+```
+```{r}
+if (recompute){
 
   #discrete
   fit.plda <- classify(data = data.trainS4, method = "PLDA", normalize = "deseq",
                      ref = "T1", control = ctrl.discrete)
+  save(fit.plda, file = file_plda)
+} else {
+    load(file_plda)
+}
+print("done")
+```
+```{r}
+if (recompute){
+
+  #discrete
+
 
   fit.plda2 <- classify(data = data.trainS4, method = "PLDA2", normalize = "deseq",
                      ref = "T1", control = ctrl.discrete)
+  save(fit.plda2, file =file_plda2)
+} else {
 
+  load(file_plda2)
+}
+print("done")
+```
+```{r}
+
+
+if (recompute){
   #voom-based
   fit.voomNSC <- classify(data = data.trainS4, method = "voomNSC",
                          normalize = "deseq", ref = "T1", control = ctrl.voom)
-  save(fit.NSC, file = file_NSC)
-  save(fit.plda, file = file_plda)
-  save(fit.plda2, file = file_plda2)
+
   save(fit.voomNSC, file= file_voomNSC)
 
 } else {
-  load(file_NSC)
-  load(file_plda)
-  load(file_plda2)
+
   load(file_voomNSC)
 }
+print("done")
+```
 
+```{r}
 pam.final <- trained(fit.NSC)$finalModel   ## 'pamrtrained' object.
 geneIdx <- pamr:::pamr.predict(pam.final, pam.final$xData, threshold = pam.final$threshold, type = "nonzero")
 
