@@ -1,5 +1,5 @@
 ---
-title: "MLSeq_cervical"
+title: "MLSeq_lung"
 output:
   html_notebook:
     toc: yes
@@ -182,7 +182,7 @@ if (recompute){
 
   load(file_voomNSC)
 }
-print("done")
+print("done")MLSeq_lung.rmd
 ```
 
 ```{r}

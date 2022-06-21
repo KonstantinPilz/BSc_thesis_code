@@ -49,7 +49,7 @@ load(file = file)
 head(cervical[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
 
 #define class labels
-class <- DataFrame(condition = factor(rep(c("N","T"), c(29, 29))))
+class <- data.frame(condition = factor(rep(c("N","T"), c(29, 29))))
 class
 ```
 3. pre-filtering
