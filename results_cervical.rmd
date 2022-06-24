@@ -1,0 +1,49 @@
+---
+title: "R Notebook"
+output: html_document
+---
+```{r, eval = FALSE}
+## ----setup, echo=FALSE, results="hide"----------------------------------------
+knitr::opts_chunk$set(tidy = FALSE,
+                      cache = FALSE,
+                      dev = "png",
+                      message = FALSE,
+                      error = FALSE,
+                      warning = TRUE)
+```
+1. load libraries
+
+```{r}
+library("ggplot2")
+library("tidyverse")
+library(ggrepel)
+```
+3. read file of DESeq2 results
+```{r}
+local <- 0
+prefix <- ifelse(local, "~", "")
+dir_DESeq <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_DESeq2/results/")
+dir_MLSeq <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_MLSeq/results/")
+
+results <- read.csv(file.path(dir_DESeq, "06_results_cervical_all.csv"))
+```
+4. include mlseq data
+```{r}
+load(file.path(dir_MLSeq, "07_pam.rda"))
+```
+5. plot
+
+```{r}
+
+
+
+ggplot(data=results, aes(x=log2FoldChange, y=-log10(pvalue))) +
+  geom_point() +
+  theme_minimal() +
+  #geom_text_repel() +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-1, 1), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red")
+```
+
+
