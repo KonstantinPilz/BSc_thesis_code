@@ -33,7 +33,7 @@ library(caret)
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 local <- FALSE
-recompute <- 1
+recompute <- 0
 
 prefix <- ifelse(local, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/lung_MLSeq")
@@ -44,7 +44,7 @@ graphics_dir <- file.path(dir, "graphics/")
 2. load data
 
 ```{r}
-recompute <- 1
+recompute <- 0
 input <- file.path(data_dir, "lung.csv")
 file_lung <- file.path(data_dir, "01_lung.Rdata")
 if(recompute){
@@ -116,7 +116,7 @@ deseq-rlog: Normalization with deseq median ratio method.
 Train all the sparse classifiers
 
 ```{r}
-recompute <- 1
+recompute <- 0
 # Define control lists.
 ctrl.continuous <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
 ctrl.discrete <- discreteControl(method = "repeatedcv", number = 5, repeats = 10,
@@ -182,7 +182,7 @@ if (recompute){
 
   load(file_voomNSC)
 }
-print("done")MLSeq_lung.rmd
+print("done")
 ```
 
 ```{r}

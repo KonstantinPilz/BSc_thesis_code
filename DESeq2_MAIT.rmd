@@ -8,8 +8,10 @@ output:
 https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
 This is the analysis of the MAIT project using DESeq2.
 
-
-
+0. measuring time
+```{r}
+start_time <- Sys.time()
+```
 1. setup
 
 ```{r, eval = FALSE}
@@ -34,7 +36,7 @@ library("tidyverse")
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 locale <- FALSE
-recompute <- FALSE
+recompute <- 1
 
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_DESeq2")
@@ -152,7 +154,7 @@ Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a 
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
 ### - takes >1 min so only recompute if necessary - ###
-recompute <- FALSE
+recompute <- 1
 
 file_vsd_K12 <- file.path(result_dir, "03_vsd_K12.Rdata")
 file_rld_K12 <- file.path(result_dir, "04_rld_K12.Rdata")
@@ -285,7 +287,7 @@ Clustering is completed.
 13. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
-recompute = TRUE
+recompute <- 1
 file_res_K12 <- file.path(result_dir, "05_res_K12.Rdata")
 file_dds_K12 <- file.path(result_dir, "06_dds_K12.Rdata")
 if (recompute) {
@@ -349,4 +351,9 @@ dev.off()
 resSig_K12 <- subset(resOrdered_K12, padj < 0.1)
 resSig_K12
 write.csv(as.data.frame(resSig_K12), file = file.path(result_dir, "07_results_K12_p01_no_exclusion"))
+```
+0. measuring time
+```{r}
+end_time <- Sys.time()
+total_time <- end_time - start_time
 ```

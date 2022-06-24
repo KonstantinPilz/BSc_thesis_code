@@ -33,7 +33,7 @@ library(caret)
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 locale <- FALSE
-recompute <- TRUE
+recompute <- 0
 
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_MLSeq")
@@ -151,6 +151,7 @@ capture.output(genes.pam, file= file.path(results_dir, "03_pam_genes.txt"))
 capture.output(genes.plda, file= file.path(results_dir, "04_plda_genes.txt"))
 capture.output(genes.plda2, file= file.path(results_dir, "05_plda2_genes.txt"))
 capture.output(genes.vnsc, file= file.path(results_dir, "06_vnsc_genes.txt"))
+save(genes.pam, file = file.path(results_dir, "07_pam.rda"))
 ```
 Have a look at accuracies
 
