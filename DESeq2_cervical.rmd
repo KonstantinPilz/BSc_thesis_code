@@ -214,12 +214,17 @@ plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
 ```
 No obvious outliers anymore. Clustering is completed.
+Save dds for further analyzes
+```{r}
+save(dds, file = file.path(results_dir, "03_dds_pre_processed.Rdata"))
+```
+
 
 13. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
-file_res <- file.path(results_dir, "03_res.Rdata")
-file_dds <- file.path(results_dir, "04_dds.Rdata")
+file_res <- file.path(results_dir, "04_res.Rdata")
+file_dds <- file.path(results_dir, "05_dds.Rdata")
 if (recompute) {
   dds <- DESeq(dds)
   res <- results(dds)
@@ -280,6 +285,6 @@ dev.off()
 ```{r}
 resSig <- subset(resOrdered, padj < 0.05)
 resSig
-write.csv(as.data.frame(resSig), file = file.path(results_dir, "05_results_cervical_p05_no_exclusion.csv"))
-write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "06_results_cervical_all.csv"))
+write.csv(as.data.frame(resSig), file = file.path(results_dir, "06_results_cervical_p05_no_exclusion.csv"))
+write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "07_results_cervical_all.csv"))
 ```
