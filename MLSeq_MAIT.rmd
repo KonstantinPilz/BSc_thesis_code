@@ -22,12 +22,12 @@ opts_chunk$set(tidy = FALSE,
 ```
 libraries
 ```{r}
-library(MLSeq)
-library(DESeq2)
-library(edgeR)
-library(VennDiagram)
-library(pamr)
-library(caret)
+library("MLSeq")
+library("DESeq2")
+library("edgeR")
+library("VennDiagram")
+library("pamr")
+library("caret")
 library("hexbin")
 library("pheatmap")
 library("RColorBrewer")
@@ -142,7 +142,7 @@ set.seed(2120)
 
 vars <- sort(apply(count, 1, var, na.rm = TRUE), decreasing = TRUE)
 
-data <- count[names(vars)[1:10000], ]
+data <- count[names(vars)[1:13350], ]
 head(data[ ,1:10])
 ```
 4. Split data into testing and training set
