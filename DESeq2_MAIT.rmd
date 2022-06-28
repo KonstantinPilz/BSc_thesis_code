@@ -41,7 +41,7 @@ recompute <- 1
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_DESeq2")
 data_dir <- file.path(dir, "data/")
-result_dir <- file.path(dir, "results/")
+results_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
 2. load and read file
@@ -62,7 +62,7 @@ backgroundInfo <- read.csv(SampleTableFile,  sep=",") #info about gender, age et
 
 
 
-file_sampleTable <- file.path(result_dir, "01_sampleTable")
+file_sampleTable <- file.path(results_dir, "01_sampleTable")
 
 if(recompute) {
     STcolsOfInterest <- c(1:16)
@@ -156,8 +156,8 @@ Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a 
 ### - takes >1 min so only recompute if necessary - ###
 recompute <- 1
 
-file_vsd_K12 <- file.path(result_dir, "03_vsd_K12.Rdata")
-file_rld_K12 <- file.path(result_dir, "04_rld_K12.Rdata")
+file_vsd_K12 <- file.path(results_dir, "03_vsd_K12.Rdata")
+file_rld_K12 <- file.path(results_dir, "04_rld_K12.Rdata")
 if (recompute) {
   vsd_K12 <- varianceStabilizingTransformation(dds_K12, blind = FALSE)
   rld_K12 <- rlog(dds_K12, blind = FALSE)
@@ -174,16 +174,23 @@ head(assay(rld_K12), 3)
 ```{r}
 #plot of sd and mean
 ntd_K12 <- normTransform(dds_K12)
+recompute <- 0
+if(recompute){
 
-jpeg(file = file.path(graphics_dir, "01_ntd_meanSd_K12.jpeg"))
-meanSdPlot(assay(ntd_K12))
-dev.off()
-jpeg(file = file.path(graphics_dir, "02_rld_meanSd_K12.jpeg"))
-meanSdPlot(assay(rld_K12))
-dev.off()
-jpeg(file = file.path(graphics_dir, "03_vsd_meanSd_K12.jpeg"))
-meanSdPlot(assay(vsd_K12))
-dev.off()
+  meanSdPlot(assay(ntd_K12))
+  jpeg(file = file.path(graphics_dir, "01_ntd_meanSd_K12.jpeg"))
+  meanSdPlot(assay(ntd_K12))
+  dev.off()
+  meanSdPlot(assay(rld_K12))
+  jpeg(file = file.path(graphics_dir, "02_rld_meanSd_K12.jpeg"))
+  meanSdPlot(assay(rld_K12))
+  dev.off()
+  meanSdPlot(assay(vsd_K12))
+  jpeg(file = file.path(graphics_dir, "03_vsd_meanSd_K12.jpeg"))
+  meanSdPlot(assay(vsd_K12))
+  dev.off()
+
+}
 ```
 For K12 vsd has the most even mean!
 
@@ -218,6 +225,9 @@ ann_colors <- list(condition = colCondition,
                    time = colTime,
                    biotype = colMyBiotypes)
 ```
+
+
+
 ```{r}
 sampleDists <- dist(t(assay(vsd_K12)))
 sampleDistMatrix <- as.matrix(sampleDists)
@@ -229,7 +239,8 @@ rownames(annotation) <- rownames(sampleDistMatrix)
 # heatmap colors
 colors <- colorRampPalette( rev(brewer.pal(9, "Greys")) )(255)
 # save heatmap in image file
-file <- paste0(graphics_dir, "04_heatmap_s2s-distance_K12.pdf")
+file <- paste0(graphics_dir, "05_heatmap_s2s-distance_K12.pdf")
+#jpeg("pheatmap.jpg")
 pheatmap(sampleDistMatrix,
          color=colors,
          border_color = NA,
@@ -238,39 +249,23 @@ pheatmap(sampleDistMatrix,
          treeheight_row = 20,
          treeheight_col = 20,
          legend = T,
-         cellwidth=10,
-         cellheight=10,
-         annotation_row = annotation,
+         cellwidth=25,
+         cellheight=25,
+         #annotation_row = annotation,
          annotation_col = annotation,
-         annotation_colors = ann_colors,
+         #annotation_colors = ann_colors,
          show_colnames = T,
+         show_rownames = F,
          main=paste0("Sample-2-sample distance of (rlog-)transformed count data\n"),
-         filename=file)
+         filename=file
+)
+
 ```
+
+
 looks as expected
 
 An additional heatmap that I have not yet understood. Will not include it for now.
-```{r}
-
-#dds_K12 <- estimateSizeFactors(dds_K12)
-#select <- order(rowMeans(counts(dds_K12, normalized = TRUE)),
-#                decreasing = TRUE)[1:20]
-#df <- as.data.frame(colData(dds_K12)[, c("condition")])
-#jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
-#saving the pheatmap is complex
-#heatmap <- pheatmap(assay(vsd_K12)[select,], cluster_rows = FALSE, show_rownames = FALSE,
-#                    cluster_cols = FALSE, annotation_col = df)
-save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
-  stopifnot(!missing(x))
-  stopifnot(!missing(filename))
-  pdf(filename, width = width, height = height)
-  grid::grid.newpage()
-  grid::grid.draw(x$gtable)
-  dev.off()
-}
-#save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_rld_heatmap_K12.pdf"))
-#dev.off()
-```
 
 
 9. PCA
@@ -284,12 +279,16 @@ dev.off()
 Looks fine, no outliers
 Clustering is completed.
 
+```{r}
+save(dds_K12, file = file.path(results_dir, "05_dds_pre_processed.Rdata"))
+```
+
 13. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
 recompute <- 1
-file_res_K12 <- file.path(result_dir, "05_res_K12.Rdata")
-file_dds_K12 <- file.path(result_dir, "06_dds_K12.Rdata")
+file_res_K12 <- file.path(results_dir, "06_res_K12.Rdata")
+file_dds_K12 <- file.path(results_dir, "07_dds_K12.Rdata")
 if (recompute) {
   dds_K12 <- DESeq(dds_K12)
   res_K12 <- results(dds_K12)
@@ -302,16 +301,14 @@ if (recompute) {
 
 res_K12
 ```
+
 12. Perform LFC transformation
 For better visualization and gene ranking we use the method lfcShrink
-Jana does not use this, so will exclude for now
 ```{r}
-#resultsNames(dds_K12)
-#resLFC_K12 <- lfcShrink(dds_K12, coef = "condition_treated_vs_untreated", type = "apeglm")
-#resLFC_K12
+resultsNames(dds_K12)
+resLFC <- lfcShrink(dds_K12, coef = "condition_K12_vs_16h_Ctrl", type = "apeglm")
+resLFC
 ```
-Error. resultsNamesDDS is not TRUE
-
 13. Table ordered by p-value
 For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
 Finally, we can get a results table.
@@ -326,22 +323,11 @@ res05_K12 <- results(dds_K12, alpha = 0.05)
 summary(res05_K12)
 sum(res05_K12$padj < 0.05, na.rm = TRUE)
 ```
-(optional) Independent hypothesis weighting
-14. MA-plot
-```{r}
-#plotMA(res_K12, ylim = c(-2, 2))
-```
-crashes --> excluded
 
-Same plot for shrunken log2 fold chages (removes noise)
-```{r}
-#plotMA(resLFC, ylim = c(-2, 2))
-```
-Does not work due to Error in 12
 15. Plot counts for individual genes
 ```{r}
 jpeg(file = file.path(graphics_dir, "06_counts_per_gene"))
-plotCounts(dds_K12, gene = which.min(res$padj), intgroup = "condition")
+plotCounts(dds_K12, gene = which.min(res_K12$padj), intgroup = "condition")
 dev.off()
 
 ```
@@ -350,10 +336,44 @@ dev.off()
 ```{r}
 resSig_K12 <- subset(resOrdered_K12, padj < 0.1)
 resSig_K12
-write.csv(as.data.frame(resSig_K12), file = file.path(result_dir, "07_results_K12_p01_no_exclusion"))
+write.csv(as.data.frame(resSig_K12), file = file.path(results_dir, "08_results_K12_p01_no_exclusion"))
+write.csv(as.data.frame(resOrdered_K12), file = file.path(results_dir, "09_results_cervical_all.csv"))
 ```
 0. measuring time
 ```{r}
 end_time <- Sys.time()
 total_time <- end_time - start_time
+```
+Heatmap
+```{r}
+recompute <- TRUE
+if (recompute)
+{
+dds_K12 <- estimateSizeFactors(dds_K12)
+select <- order(rowMeans(counts(dds_K12, normalized = TRUE)),
+decreasing = TRUE)[1:200]
+df <- as.data.frame(colData(dds_K12)[, c("condition")])
+rows <- match(rownames(sampleDistMatrix), rownames(sampleTable))
+annotation <- data.frame(treatment = sampleTable$treatment[rows])
+rownames(annotation) <- rownames(sampleDistMatrix)
+jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
+#saving the pheatmap is complex
+heatmap <- pheatmap(assay(vsd_K12)[select,],
+cluster_rows = TRUE,
+show_rownames = FALSE,
+cluster_cols = TRUE,
+annotation_col = annotation
+)
+
+save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
+stopifnot(!missing(x))
+stopifnot(!missing(filename))
+pdf(filename, width = width, height = height)
+grid::grid.newpage()
+grid::grid.draw(x$gtable)
+dev.off()
+}
+save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_vsd_heatmap_K12.pdf"))
+dev.off()
+}
 ```

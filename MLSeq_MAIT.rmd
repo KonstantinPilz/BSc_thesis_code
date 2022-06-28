@@ -33,12 +33,18 @@ library("pheatmap")
 library("RColorBrewer")
 library("ggplot2")
 library("tidyverse")
+library("BiocParallel")
 
 ```
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 local <- FALSE
 recompute <- 0
+#cores
+if (!local){
+  mcparam <- MulticoreParam(4)
+  register(mcparam)
+}
 
 prefix <- ifelse(local, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_MLSeq")
@@ -47,88 +53,17 @@ result_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
 2. load data
+
+Data input
 ```{r}
-count_files <- list.files(path=data_dir, pattern=".txt", full.names=TRUE)#all files
+load("/data/bioinf/projects/data/2022_MLseq_KP/MAIT_DESeq2/results/05_dds_pre_processed.Rdata")
+#head(dds_K12)
+count<- dds_K12
+head(data)
 
-count_files_0h <- list.files(path=data_dir, pattern="0h", full.names=TRUE)#first timepoint which will be excluded from analysis
-count_files_K12 <- list.files(path=data_dir, pattern="K12", full.names=TRUE)#K12 treatment
-count_files_CD3 <- list.files(path=data_dir, pattern="CD3", full.names=TRUE)#CD3 treatment
-count_files_K12vsUnstim <- count_files [! count_files %in% count_files_0h]
-count_files_K12vsUnstim <- count_files_K12vsUnstim [! count_files_K12vsUnstim %in% count_files_CD3]
-
-names(count_files) <- gsub("-htseq_counts.txt", "", basename(count_files)) # this shortens the names
-names(count_files_K12vsUnstim) <- gsub("-htseq_counts.txt", "", basename(count_files_K12vsUnstim))
-SampleTableFile <- paste0(data_dir, "SampleTable_MAITseq_All.csv")
-backgroundInfo <- read.csv(SampleTableFile,  sep=",") #info about gender, age etc
-
-
-
-file_sampleTable <- file.path(result_dir, "01_sampleTable")
-
-if(recompute) {
-    STcolsOfInterest <- c(1:16)
-    STcolsAsFactors <- c(4,8,9,12,16)
-
-    sT <- read.table(SampleTableFile, header=T, sep=",", stringsAsFactors = FALSE)
-    for(i in STcolsAsFactors)
-    { #select requested columns
-      sT[,i] <- as.factor(sT[,i])
-    }
-    sT <- sT[,STcolsOfInterest]
-    sampleTable <- sT
-    colnames(sampleTable)[c(2,4,5)] <- c("sampleName", "time", "condition")
-    rownames(sampleTable) <- sampleTable$sampleName
-    sampleTable$time <- as.factor(paste0(sampleTable$time, "h"))
-    # fileName is required by DESeq2 function
-    rows <- match(names(count_files), rownames(sampleTable))
-    sampleTable$fileName[rows] <- basename(count_files)
-    # formatting condition etc.
-    sampleTable$condition <- ifelse(sampleTable$condition=='-', "Ctrl_0",
-                                    ifelse(sampleTable$condition=='unstim',
-                                           "Ctrl_16", sampleTable$condition))
-    sampleTable$condition <- gsub("-", "_", sampleTable$condition)
-    sampleTable$condition <- as.factor(sampleTable$condition)
-    sampleTable$treatment <- ifelse(str_detect(sampleTable$condition,"Ctrl"),
-                                    "control", "treated")
-    sampleTable$treatment <- as.factor(sampleTable$treatment)
-    sampleTable <- sampleTable[,c(2,17,4,5,18,3,6:16)]
-    save(sampleTable, file=file_sampleTable)
-} else {
-    load(file = file_sampleTable)
-}
-print(paste("Sample table loaded:", SampleTableFile, "-",
-            dim(sampleTable)[2], "columns for",
-            dim(sampleTable)[1], "samples:"))
-sampleTable$condition <- gsub("CD3_28", "CD3-28",
-                              gsub("Ctrl_16", "16h_Ctrl",
-                                   gsub("Ctrl_0", "0h_Ctrl", sampleTable$condition)))
-names(sampleTable)
-
-sampleTable_K12_unstim <- filter(sampleTable, condition=="K12" | condition=="16h_Ctrl")#table for a subset -> only K12 vs unstim
-
-```
-creating the count table for K12
-```{r}
-file_dds_K12 <- file.path(data_dir, "02_dds_K12")
-if(recompute){
-
-  design <- formula(~ condition)
-  dds_K12 <- DESeqDataSetFromHTSeqCount(sampleTable=sampleTable_K12_unstim,
-                                  directory= data_dir,
-                                  design=design)
-  save (dds_K12, file= file_dds_K12)
-
-
-} else {
-  load(file_dds_K12)
-}
-#write.table(assay(dds_K12), file = file.path (result_dir, "03_count_data.txt", sep=";"))
 count <- assay(dds_K12) # I recreated to count table from the dds for the following steps in the MLSeq workflow
 #look at object
 count <- count[,c(1,3,5,7,9,2,4,6,8,10)]
-
-head(count)
-
 
 class <- data.frame(condition = factor(rep(c("T","C"), c(5, 5))))
 colnames(count) <- 1:10
@@ -142,9 +77,10 @@ set.seed(2120)
 
 vars <- sort(apply(count, 1, var, na.rm = TRUE), decreasing = TRUE)
 
-data <- count[names(vars)[1:13350], ]
-head(data[ ,1:10])
+data <- count[names(vars)[13000:14000], ]
+#head(data[ ,1:10])
 ```
+Input from DESeq preprocessing
 4. Split data into testing and training set
 Since we want to build a classification model, we need training data.
 After training, we need more data to assess the performance
@@ -179,9 +115,6 @@ data.testS4 = DESeqDataSetFromMatrix(countData = data.test,
 First, the data is normalized using one of four methods
 deseq-rlog: Normalization with deseq median ratio method.
 
-6. 93 training methods can be used to train classifiers
-> availableMethods() to see them
-
 Train all the sparse classifiers
 
 ```{r}
@@ -197,6 +130,23 @@ file_NSC <- file.path(data_dir, "02_NSC.Rdata")
 file_plda <- file.path(data_dir, "03_plda.Rdata")
 file_plda2<- file.path(data_dir, "04_plda2.Rdata")
 file_voomNSC <- file.path(data_dir, "05_voomNSC.Rdata")
+```
+```{r}
+recompute <- 1
+
+if (recompute){
+  #voom-based
+  fit.voomNSC <- classify(data = data.trainS4, method = "voomNSC",
+                         normalize = "deseq", ref = "C", control = ctrl.voom, na.rm = TRUE)
+
+  save(fit.voomNSC, file= file_voomNSC)
+
+} else {
+
+  load(file_voomNSC)
+}
+print("done")
+genes.vnsc <- selectedGenes(fit.voomNSC)
 ```
 ```{r}
 if (recompute){
@@ -243,23 +193,7 @@ if (recompute){
 print("done")
 genes.plda2 <- selectedGenes(fit.plda2)
 ```
-```{r}
-recompute <- 1
 
-if (recompute){
-  #voom-based
-  fit.voomNSC <- classify(data = data.trainS4, method = "voomNSC",
-                         normalize = "deseq", ref = "C", control = ctrl.voom, na.rm = TRUE)
-
-  save(fit.voomNSC, file= file_voomNSC)
-
-} else {
-
-  load(file_voomNSC)
-}
-print("done")
-genes.vnsc <- selectedGenes(fit.voomNSC)
-```
 
 ```{r}
 tmp.list <- list(genes.pam, genes.plda, genes.plda2, genes.vnsc)
