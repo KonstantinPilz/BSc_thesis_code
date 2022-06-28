@@ -32,7 +32,7 @@ library("ggplot2")
 Making it possible to run both on local machine and on cluster
 ```{r}
 local <- FALSE
-recompute <- 1
+recompute <- 0
 
 prefix <- ifelse(local, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/cervical_DESeq2")
@@ -115,31 +115,7 @@ dev.off()
 rld has the most even mean
 7. Heatmap
 We need to first estimate the size factors to make it work
-```{r}
 
-dds <- estimateSizeFactors(dds)
-select <- order(rowMeans(counts(dds, normalized = TRUE)),
-                decreasing = TRUE)[1:20]
-df <- as.data.frame(colData(dds)[, c("condition")])
-#jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
-#saving the pheatmap is complex
-heatmap <- pheatmap(assay(rld)[select,],
-                    cluster_rows = TRUE,
-                    show_rownames = FALSE,
-                    cluster_cols = TRUE,
-                    annotation_col = class)
-save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
-  stopifnot(!missing(x))
-  stopifnot(!missing(filename))
-  pdf(filename, width = width, height = height)
-  grid::grid.newpage()
-  grid::grid.draw(x$gtable)
-  dev.off()
-}
-save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_rld_heatmap.pdf"))
-#dev.off()
-```
-Observation: Sample 9 looks off. Samples 35 and 39 do too (although only slightly)
 8. Heatmap of the sample-to-sample distances
 sampleDists gives distances
 creating plot with RColorBrewer and pheatmap
@@ -151,22 +127,23 @@ sampleDistMatrix <- as.matrix(sampleDists)
 rownames(sampleDistMatrix) <- paste(rld$condition)#paste(rld$colnames)
 colnames(sampleDistMatrix) <- colnames(rld)
 annotation <- data.frame(condition = class$condition)
-colors <- colorRampPalette(rev(brewer.pal(9, "Blues")))(255)
-heatmap2 <- pheatmap(sampleDistMatrix,
+colors <- colorRampPalette(rev(brewer.pal(9, "Greys")))(255)
+pheatmap(sampleDistMatrix,
                      clustering_distance_rows = sampleDists,
                      clustering_distance_cols = sampleDists,
-                     #treeheight_row = 20,
-                     #treeheight_col = 20,
-                     #legend = T,
-                     #cellwidth=10,
-                     #cellheight=10,
+                     treeheight_row = 20,
+                     treeheight_col = 20,
+                     legend = T,
+                     cellwidth=10,
+                     cellheight=10,
                      #annotation_row = class,
                      annotation_col = annotation,
                      #annotation_colors = ann_colors,
                      show_colnames = T,
                      show_rownames = F,
-                     col = colors)
-save_pheatmap_pdf(heatmap2, file.path(graphics_dir, "05_rld_heatmap_sampledist.pdf"))
+                     filename = paste0(file.path(graphics_dir, "05_rld_heatmap_sampledist.pdf")),
+                     color = colors)
+#save_pheatmap_pdf(heatmap, file.path(graphics_dir, "05_rld_heatmap_sampledist.pdf"))
 ```
 Observation: Sample 54, 15 and 29 look out of place
 9. PCA
@@ -223,6 +200,7 @@ save(dds, file = file.path(results_dir, "03_dds_pre_processed.Rdata"))
 13. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
+recompute <- 0
 file_res <- file.path(results_dir, "04_res.Rdata")
 file_dds <- file.path(results_dir, "05_dds.Rdata")
 if (recompute) {
@@ -288,3 +266,29 @@ resSig
 write.csv(as.data.frame(resSig), file = file.path(results_dir, "06_results_cervical_p05_no_exclusion.csv"))
 write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "07_results_cervical_all.csv"))
 ```
+Heatmap
+```{r}
+
+dds <- estimateSizeFactors(dds)
+select <- order(rowMeans(counts(dds, normalized = TRUE)),
+                decreasing = TRUE)[1:20]
+df <- as.data.frame(colData(dds)[, c("condition")])
+#jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
+#saving the pheatmap is complex
+heatmap <- pheatmap(assay(rld)[select,],
+                    cluster_rows = TRUE,
+                    show_rownames = FALSE,
+                    cluster_cols = TRUE,
+                    annotation_col = class)
+save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
+  stopifnot(!missing(x))
+  stopifnot(!missing(filename))
+  pdf(filename, width = width, height = height)
+  grid::grid.newpage()
+  grid::grid.draw(x$gtable)
+  dev.off()
+}
+save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_rld_heatmap.pdf"))
+#dev.off()
+```
+Observation: Sample 9 looks off. Samples 35 and 39 do too (although only slightly)

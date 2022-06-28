@@ -128,47 +128,23 @@ meanSdPlot(assay(vsd))
 dev.off()
 ```
 vsd has the most even mean (could not do rld)
-7. Heatmap
-We need to first estimate the size factors to make it work
-```{r}
 
-dds <- estimateSizeFactors(dds)
-select <- order(rowMeans(counts(dds, normalized = TRUE)),
-                decreasing = TRUE)[1:20]
-df <- as.data.frame(colData(dds)[, c("condition")])
-#jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
-#saving the pheatmap is complex
-heatmap <- pheatmap(assay(vsd)[select,], cluster_rows = FALSE, show_rownames = FALSE,
-                    cluster_cols = FALSE, annotation_col = df)
-save_pheatmap_pdf <- function(x, filename, width = 70, height = 70) {
-  stopifnot(!missing(x))
-  stopifnot(!missing(filename))
-  pdf(filename, width = width, height = height)
-  grid::grid.newpage()
-  grid::grid.draw(x$gtable)
-  dev.off()
-}
-save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_vsd_heatmap.pdf"))
-#dev.off()
-```
 8. Heatmap of the sample-to-sample distances
 sampleDists gives distances
 creating plot with RColorBrewer and pheatmap
+
 ```{r}
 sampleDists <- dist(t(assay(vsd)))
 sampleDistMatrix <- as.matrix(sampleDists)
-```
-```{r}
-# annotation of rows
-#rows <- match(rownames(sampleDistMatrix), rownames(class))
-#annotation <- data.frame(treatment = class$condition[rows])
-#rownames(annotation) <- paste(vsd$condition)
-# heatmap colors
+
+
 rownames(sampleDistMatrix) <- paste(vsd$condition)
-colnames(sampleDistMatrix) <- NULL
+colnames(sampleDistMatrix) <- colnames(vsd)
+#annotation <- data.frame(condition =class$condition)
+#rownames(annotation) <- rownames(sampleDistMatrix)
 colors <- colorRampPalette( rev(brewer.pal(9, "Greys")) )(255)
 # save heatmap in image file
-file <- paste0(graphics_dir, "04_heatmap_s2s-distance_K12.pdf")
+file <- paste0(graphics_dir, "04_heatmap_s2s-distance.pdf")
 pheatmap(sampleDistMatrix,
          color=colors,
          border_color = NA,
@@ -180,11 +156,13 @@ pheatmap(sampleDistMatrix,
          cellwidth=10,
          cellheight=10,
          #annotation_row = annotation,
-         #annotation_col = annotation,
-         annotation_colors = ann_colors,
+         #annotation_col = class,
+         #annotation_colors = ann_colors,
          show_colnames = T,
-         main=paste0("Sample-2-sample distance vsd-transformed\n"),
-         filename=file)
+         show_rownames = F,
+         #main=paste0("Sample-2-sample distance vsd-transformed\n"),
+         filename=file
+)
 
 ```
 ```{r}
@@ -275,4 +253,27 @@ plotCounts(dds, gene = which.min(res$padj), intgroup = "condition")
 resSig <- subset(resOrdered, padj < 0.1)
 resSig
 write.csv(as.data.frame(resSig), file = file.path(result_dir, "03_results_lung_p01"))
+```
+7. Heatmap
+We need to first estimate the size factors to make it work
+```{r}
+
+dds <- estimateSizeFactors(dds)
+select <- order(rowMeans(counts(dds, normalized = TRUE)),
+                decreasing = TRUE)[1:20]
+df <- as.data.frame(colData(dds)[, c("condition")])
+#jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
+#saving the pheatmap is complex
+heatmap <- pheatmap(assay(vsd)[select,], cluster_rows = FALSE, show_rownames = FALSE,
+                    cluster_cols = FALSE, annotation_col = df)
+save_pheatmap_pdf <- function(x, filename, width = 70, height = 70) {
+  stopifnot(!missing(x))
+  stopifnot(!missing(filename))
+  pdf(filename, width = width, height = height)
+  grid::grid.newpage()
+  grid::grid.draw(x$gtable)
+  dev.off()
+}
+save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_vsd_heatmap.pdf"))
+#dev.off()
 ```
