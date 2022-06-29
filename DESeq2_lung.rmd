@@ -37,7 +37,7 @@ recompute <- 0
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/lung_DESeq2")
 data_dir <- file.path(dir, "data/")
-result_dir <- file.path(dir, "results/")
+results_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
 2. load and read file
@@ -191,13 +191,17 @@ plotPCA(vsd)# + geom_text(aes(label = name), vjust = 2)
 dev.off()
 ```
  Clustering is completed.
+Save dds for MLSeq analysis
+```{r}
+save(dds, file = file.path(results_dir, "03_dds_pre_processed.Rdata"))
+```
 
 13. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
 recompute <- 0
-file_res <- file.path(result_dir, "03_res.Rdata")
-file_dds <- file.path(result_dir, "04_dds.Rdata")
+file_res <- file.path(results_dir, "03_res.Rdata")
+file_dds <- file.path(results_dir, "04_dds.Rdata")
 if (recompute) {
   dds <- DESeq(dds)
   res <- results(dds)
@@ -214,8 +218,8 @@ res
 For better visualization and gene ranking we use the method lfcShrink
 ```{r}
 resultsNames(dds)
-#resLFC <- lfcShrink(dds, coef = "condition_T1vT2", type = "apeglm")
-#resLFC
+resLFC <- lfcShrink(dds, coef = "condition_T2_vs_T1", type = "apeglm")
+resLFC
 ```
 Error. resultsNamesDDS is not TRUE
 13. Table ordered by p-value
@@ -232,12 +236,19 @@ res05 <- results(dds, alpha = 0.05)
 summary(res05)
 sum(res05$padj < 0.05, na.rm = TRUE)
 ```
+16. Export the list of genes that pass p-value (adjusted with Benjamini-Hochberg procedure
+```{r}
+resSig <- subset(resOrdered, padj < 0.1)
+resSig
+write.csv(as.data.frame(resSig), file = file.path(results_dir, "03_results_lung_p01"))
+write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "07_results_all.csv"))
+```
 (optional) Independent hypothesis weighting
 14. MA-plot
 ```{r}
 plotMA(res, ylim = c(-2, 2))
 ```
-This looks nothing like what I expected. I looks like it is mirrored by the y-axis and moved -1.6 into x-direction
+
 
 Same plot for shrunken log2 fold changes (removes noise)
 ```{r}
@@ -247,12 +258,6 @@ Does not work due to Error in 12
 15. Plot counts for individual genes
 ```{r}
 plotCounts(dds, gene = which.min(res$padj), intgroup = "condition")
-```
-16. Export the list of genes that pass p-value (adjusted with Benjamini-Hochberg procedure
-```{r}
-resSig <- subset(resOrdered, padj < 0.1)
-resSig
-write.csv(as.data.frame(resSig), file = file.path(result_dir, "03_results_lung_p01"))
 ```
 7. Heatmap
 We need to first estimate the size factors to make it work

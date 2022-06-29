@@ -44,15 +44,9 @@ graphics_dir <- file.path(dir, "graphics/")
 2. load data
 
 ```{r}
-recompute <- 0
-input <- file.path(data_dir, "lung.csv")
-file_lung <- file.path(data_dir, "01_lung.Rdata")
-if(recompute){
-  lung <- read.csv(input,  sep=" ")
-  save(lung, file = file_lung)
-} else {
-  load(file_lung)
-}
+
+load("/data/bioinf/projects/data/2022_MLseq_KP/lung_DESeq2/results/03_dds_pre_processed.Rdata")
+lung <- assay(dds)
 
 head(lung[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
 
@@ -116,7 +110,7 @@ deseq-rlog: Normalization with deseq median ratio method.
 Train all the sparse classifiers
 
 ```{r}
-recompute <- 0
+recompute <- 1
 # Define control lists.
 ctrl.continuous <- trainControl(method = "repeatedcv", number = 5, repeats = 10)
 ctrl.discrete <- discreteControl(method = "repeatedcv", number = 5, repeats = 10,
@@ -132,10 +126,12 @@ file_voomNSC <- file.path(data_dir, "05_voomNSC.Rdata")
 ```{r}
 if (recompute){
   #continuous
+  start <- Sys.time()
   fit.NSC <- classify(data = data.trainS4, method = "pam",
                  preProcessing = "deseq-vst", ref = "T1", tuneLength = 10,
                  control = ctrl.continuous)
   save(fit.NSC, file = file_NSC)
+  tnsc = start - Sys.time()
 } else {
     load(file_NSC)
 }
@@ -143,11 +139,12 @@ print("done")
 ```
 ```{r}
 if (recompute){
-
+  start <- Sys.time()
   #discrete
   fit.plda <- classify(data = data.trainS4, method = "PLDA", normalize = "deseq",
                      ref = "T1", control = ctrl.discrete)
   save(fit.plda, file = file_plda)
+  tplda = Sys.time() - start
 } else {
     load(file_plda)
 }
@@ -157,11 +154,12 @@ print("done")
 if (recompute){
 
   #discrete
-
+  start <- Sys.time()
 
   fit.plda2 <- classify(data = data.trainS4, method = "PLDA2", normalize = "deseq",
                      ref = "T1", control = ctrl.discrete)
   save(fit.plda2, file =file_plda2)
+  tplda2 = Sys.time() - start
 } else {
 
   load(file_plda2)
@@ -173,10 +171,12 @@ print("done")
 
 if (recompute){
   #voom-based
+  start <- Sys.time()
   fit.voomNSC <- classify(data = data.trainS4, method = "voomNSC",
                          normalize = "deseq", ref = "T1", control = ctrl.voom)
 
   save(fit.voomNSC, file= file_voomNSC)
+  tvnsc = Sys.time() - start
 
 } else {
 
@@ -184,6 +184,7 @@ if (recompute){
 }
 print("done")
 ```
+save times
 
 ```{r}
 pam.final <- trained(fit.NSC)$finalModel   ## 'pamrtrained' object.
@@ -207,7 +208,17 @@ capture.output(genes.pam, file= file.path(results_dir, "03_pam_genes.txt"))
 capture.output(genes.plda, file= file.path(results_dir, "04_plda_genes.txt"))
 capture.output(genes.plda2, file= file.path(results_dir, "05_plda2_genes.txt"))
 capture.output(genes.vnsc, file= file.path(results_dir, "06_vnsc_genes.txt"))
+save(genes.pam, file = file.path(results_dir, "07_pam.rda"))
+save(genes.plda, file = file.path(results_dir, "08_plda.rda"))
+save(genes.plda2, file = file.path(results_dir, "09_plda2.rda"))
+save(genes.vnsc, file = file.path(results_dir, "10_vnsc.rda"))
 
+```
+```{r}
+capture.output(tnsc, file= file.path(results_dir, "11_nsc_time.txt"))
+capture.output(tplda, file= file.path(results_dir, "12_plda_time.txt"))
+capture.output(tplda2, file= file.path(results_dir, "13_plda2_time.txt"))
+capture.output(tvnsc, file= file.path(results_dir, "14_vnsc_time.txt"))
 ```
 Have a look at accuracies
 
@@ -216,6 +227,10 @@ show(fit.NSC)
 show(fit.plda)
 show(fit.plda2)
 show(fit.voomNSC)
+capture.output(fit.NSC, file= file.path(results_dir, "15_fit_NSC.txt"))
+capture.output(fit.plda, file= file.path(results_dir, "16_fit_PLDA.txt"))
+capture.output(fit.plda2, file= file.path(results_dir, "17_fit_PLDA2.txt"))
+capture.output(fit.voomNSC, file= file.path(results_dir, "18_fit_vNSC.txt"))
 ```
 venn diagram of selected features by sparse classifiers
 ```{r}

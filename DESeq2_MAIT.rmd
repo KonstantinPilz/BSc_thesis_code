@@ -337,7 +337,7 @@ dev.off()
 resSig_K12 <- subset(resOrdered_K12, padj < 0.1)
 resSig_K12
 write.csv(as.data.frame(resSig_K12), file = file.path(results_dir, "08_results_K12_p01_no_exclusion"))
-write.csv(as.data.frame(resOrdered_K12), file = file.path(results_dir, "09_results_cervical_all.csv"))
+write.csv(as.data.frame(resOrdered_K12), file = file.path(results_dir, "09_results_all.csv"))
 ```
 0. measuring time
 ```{r}
