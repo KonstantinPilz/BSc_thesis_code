@@ -8,10 +8,7 @@ output:
 https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
 This is the analysis of the MAIT project using DESeq2.
 
-0. measuring time
-```{r}
-start_time <- Sys.time()
-```
+
 1. setup
 
 ```{r, eval = FALSE}
@@ -287,6 +284,9 @@ save(dds_K12, file = file.path(results_dir, "05_dds_pre_processed.Rdata"))
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
 recompute <- 1
+# runtime
+start <- Sys.time()
+
 file_res_K12 <- file.path(results_dir, "06_res_K12.Rdata")
 file_dds_K12 <- file.path(results_dir, "07_dds_K12.Rdata")
 if (recompute) {
@@ -324,13 +324,7 @@ summary(res05_K12)
 sum(res05_K12$padj < 0.05, na.rm = TRUE)
 ```
 
-15. Plot counts for individual genes
-```{r}
-jpeg(file = file.path(graphics_dir, "06_counts_per_gene"))
-plotCounts(dds_K12, gene = which.min(res_K12$padj), intgroup = "condition")
-dev.off()
 
-```
 16. Export the list of genes that pass p-value
 
 ```{r}
@@ -338,11 +332,16 @@ resSig_K12 <- subset(resOrdered_K12, padj < 0.1)
 resSig_K12
 write.csv(as.data.frame(resSig_K12), file = file.path(results_dir, "08_results_K12_p01_no_exclusion"))
 write.csv(as.data.frame(resOrdered_K12), file = file.path(results_dir, "09_results_all.csv"))
+#runtime
+runtime <- Sys.time() - start
+capture.output(runtime, file = file.path(results_dir, "10_runtime.txt"))
 ```
-0. measuring time
-```{r}
-end_time <- Sys.time()
-total_time <- end_time - start_time
+15. Plot counts for individual genes
+#```{r}
+jpeg(file = file.path(graphics_dir, "06_counts_per_gene"))
+plotCounts(dds_K12, gene = which.min(res_K12$padj), intgroup = "condition")
+dev.off()
+
 ```
 Heatmap
 ```{r}

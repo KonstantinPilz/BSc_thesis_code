@@ -73,6 +73,7 @@ If we set it to e.g. 90% for this small sample, there would be only 6 samples
 left for testing. A single unit missclassification, which the model is
 sensitive to would result in an accuracy loss of 17%
 ```{r}
+start <- Sys.time()
 nTest <- ceiling(ncol(data) * 0.3) #K# ncol: number of columns in an array
 ind <- sample(ncol(data), nTest, FALSE) #K# This is randomizing the samples
 
@@ -145,16 +146,25 @@ nn <- c(length(genes.pam), length(genes.plda), length(genes.plda2), length(genes
 ooo <- order(nn, decreasing = TRUE)
 
 tmp.list <- tmp.list[ooo]
-#K# saving the list of genes
+#saving the list of genes
 capture.output(tmp.list, file = file.path(results_dir, "02_summary_sparse_classifiers.txt"))
-capture.output(genes.pam, file= file.path(results_dir, "03_pam_genes.txt"))
-capture.output(genes.plda, file= file.path(results_dir, "04_plda_genes.txt"))
-capture.output(genes.plda2, file= file.path(results_dir, "05_plda2_genes.txt"))
-capture.output(genes.vnsc, file= file.path(results_dir, "06_vnsc_genes.txt"))
+capture.output(genes.pam, file= file.path(results_dir, "03_NSC_genes.txt"))
+capture.output(genes.plda, file= file.path(results_dir, "04_PLDA_genes.txt"))
+capture.output(genes.plda2, file= file.path(results_dir, "05_PLDA2_genes.txt"))
+capture.output(genes.vnsc, file= file.path(results_dir, "06_vNSC_genes.txt"))
+#don't change these names as they are used in the results rmd
 save(genes.pam, file = file.path(results_dir, "07_pam.rda"))
 save(genes.plda, file = file.path(results_dir, "08_plda.rda"))
 save(genes.plda2, file = file.path(results_dir, "09_plda2.rda"))
 save(genes.vnsc, file = file.path(results_dir, "10_vnsc.rda"))
+#accuracies
+capture.output(fit.NSC, file = file.path(results_dir, "11_acc_NSC.txt"))
+capture.output(fit.plda, file = file.path(results_dir, "12_acc_PLDA.txt"))
+capture.output(fit.plda2, file = file.path(results_dir, "13_acc_PLDA2.txt"))
+capture.output(fit.voomNSC, file = file.path(results_dir, "14_acc_vNSC.txt"))
+#runtime
+runtime <- Sys.time() - start
+capture.output(runtime, file = file.path(results_dir, "15_runtime.txt"))
 ```
 Have a look at accuracies
 

@@ -199,7 +199,9 @@ save(dds, file = file.path(results_dir, "03_dds_pre_processed.Rdata"))
 13. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
-recompute <- 0
+start <- Sys.time()
+
+recompute <- 1
 file_res <- file.path(results_dir, "03_res.Rdata")
 file_dds <- file.path(results_dir, "04_dds.Rdata")
 if (recompute) {
@@ -221,7 +223,7 @@ resultsNames(dds)
 resLFC <- lfcShrink(dds, coef = "condition_T2_vs_T1", type = "apeglm")
 resLFC
 ```
-Error. resultsNamesDDS is not TRUE
+
 13. Table ordered by p-value
 For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
 Finally, we can get a results table.
@@ -242,26 +244,30 @@ resSig <- subset(resOrdered, padj < 0.1)
 resSig
 write.csv(as.data.frame(resSig), file = file.path(results_dir, "03_results_lung_p01"))
 write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "07_results_all.csv"))
+#runtime
+runtime <- Sys.time() - start
+capture.output(runtime, file = file.path(results_dir, "08_runtime.txt"))
+print("done")
 ```
 (optional) Independent hypothesis weighting
 14. MA-plot
-```{r}
+#```{r}
 plotMA(res, ylim = c(-2, 2))
 ```
 
 
 Same plot for shrunken log2 fold changes (removes noise)
-```{r}
+#```{r}
 plotMA(resLFC, ylim = c(-2, 2))
 ```
 Does not work due to Error in 12
 15. Plot counts for individual genes
-```{r}
+#```{r}
 plotCounts(dds, gene = which.min(res$padj), intgroup = "condition")
 ```
 7. Heatmap
 We need to first estimate the size factors to make it work
-```{r}
+#```{r}
 
 dds <- estimateSizeFactors(dds)
 select <- order(rowMeans(counts(dds, normalized = TRUE)),

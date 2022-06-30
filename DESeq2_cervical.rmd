@@ -82,6 +82,7 @@ rlog ~ regularized logarithm - normalizes on basis of library size and transform
 Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
+recompute <- 1
 file_vsd <- file.path(results_dir, "01_vsd.Rdata")
 file_rld <- file.path(results_dir, "02_rld.Rdata")
 if (recompute) {
@@ -150,7 +151,7 @@ Observation: Sample 54, 15 and 29 look out of place
 Shows samples in 2D plot, the axes representing their two principal components
 ```{r}
 
-plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
+
 jpeg(file=file.path(graphics_dir, "06_rld_PCA.jpeg"))
 plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
@@ -165,7 +166,7 @@ Exclude sample 15 and redo PCA
 rld <- rld[, -15]
 dds <- dds[, -15]
 
-plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
+
 jpeg(file = file.path(graphics_dir, "07_rld_PCA.jpeg"))
 plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
@@ -175,7 +176,7 @@ Observation: Sample 54 is a clear outlier, it also was observed to be different 
 rld <- rld[, -53] #since a sample before it was excluded, 54 is in position 53
 dds <- dds[, -53]
 
-plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
+
 jpeg(file = file.path(graphics_dir, "08_rld_PCA.jpeg"))
 plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
@@ -185,7 +186,7 @@ Now, 29 also looks like an outlier. It too was an outlier in the sts distance
 rld <- rld[, -28] #again, 29 is now at position 28 because 15 was excluded
 dds <- dds[, -28]
 
-plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
+
 jpeg(file = file.path(graphics_dir, "09_rld_PCA.jpeg"))
 plotPCA(rld) + geom_text(aes(label = name), vjust = 2)
 dev.off()
@@ -200,7 +201,10 @@ save(dds, file = file.path(results_dir, "03_dds_pre_processed.Rdata"))
 13. Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
-recompute <- 0
+#start timer
+start <- Sys.time()
+
+recompute <- 1
 file_res <- file.path(results_dir, "04_res.Rdata")
 file_dds <- file.path(results_dir, "05_dds.Rdata")
 if (recompute) {
@@ -237,9 +241,18 @@ res05 <- results(dds, alpha = 0.05)
 summary(res05)
 sum(res05$padj < 0.05, na.rm = TRUE)
 ```
+16. Export the list of genes that pass p-value
+```{r}
+resSig <- subset(resOrdered, padj < 0.05)
+resSig
+write.csv(as.data.frame(resSig), file = file.path(results_dir, "06_results_cervical_p05_no_exclusion.csv"))
+write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "07_results_cervical_all.csv"))
+runtime <- Sys.time() - start
+capture.output(runtime, file = file.path(results_dir, "08_runtime.txt"))
+```
 (optional: Independent hypothesis weighting)
 14. MA-plot
-```{r}
+#```{r}
 jpeg(file = file.path(graphics_dir, "10_MA_plot"))
 plotMA(res, ylim = c(-10, 10))
 dev.off()
@@ -248,26 +261,20 @@ This looks nothing like what I expected. I looks like it is mirrored by the y-ax
 
 Same plot for shrunken log2 fold chages (removes noise)
 ```{r}
-jpeg(file = file.path(graphics_dir, "11_MA_plot_weighting_LFC"))
-plotMA(resLFC, ylim = c(-10, 10))
-dev.off()
+#jpeg(file = file.path(graphics_dir, "11_MA_plot_weighting_LFC"))
+#plotMA(resLFC, ylim = c(-10, 10))
+#dev.off()
 ```
 Does not work due to Error in 12
 15. Plot counts for individual genes
 ```{r}
-jpeg(file = file.path(graphics_dir, "12_counts_per_gene"))
-plotCounts(dds, gene = which.min(res$padj), intgroup = "condition")
-dev.off()
+#jpeg(file = file.path(graphics_dir, "12_counts_per_gene"))
+#plotCounts(dds, gene = which.min(res$padj), intgroup = "condition")
+#dev.off()
 ```
-16. Export the list of genes that pass p-value
-```{r}
-resSig <- subset(resOrdered, padj < 0.05)
-resSig
-write.csv(as.data.frame(resSig), file = file.path(results_dir, "06_results_cervical_p05_no_exclusion.csv"))
-write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "07_results_cervical_all.csv"))
-```
+
 Heatmap
-```{r}
+#```{r}
 
 dds <- estimateSizeFactors(dds)
 select <- order(rowMeans(counts(dds, normalized = TRUE)),
