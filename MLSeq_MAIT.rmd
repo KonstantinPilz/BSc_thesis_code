@@ -73,7 +73,7 @@ The seed determines how the samples are randomized -> For reproducibility use sa
 In particular it determines the variable ind
 We do not perform a differential expression analysis to select differentially expressed genes. However, in practice, DE analysis might be performed before fitting classifiers. Here, we selected top 100 features having the highest gene-wise variances in order to decrease computational cost.
 ```{r}
-set.seed(2120)
+set.seed(2129)
 
 vars <- sort(apply(count, 1, var, na.rm = TRUE), decreasing = TRUE)
 
@@ -90,7 +90,7 @@ Since the number of samples is only 5 each, the accuracy will be 100% regardless
 #runtime
 start_total <- Sys.time()
 
-nTest <- ceiling(ncol(data) * 0.2)
+nTest <- ceiling(ncol(data) * 0.4)
 ind <- sample(ncol(data), nTest, FALSE)
 
 # Minimum count is set to 1 in order to prevent 0 division problem within
@@ -142,7 +142,7 @@ if (recompute){
                       preProcessing = "deseq-vst", ref = "C", tuneLength = 2,
                       control = ctrl.continuous)
   save(fit.NSC, file = file_NSC)
-  tnsc = start - Sys.time()
+  tnsc <- start - Sys.time()
 } else {
   load(file_NSC)
 }

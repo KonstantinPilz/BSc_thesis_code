@@ -195,6 +195,7 @@ No obvious outliers anymore. Clustering is completed.
 Save dds for further analyzes
 ```{r}
 save(dds, file = file.path(results_dir, "03_dds_pre_processed.Rdata"))
+save(rld, file = file.path(results_dir, "02b_rld.Rdata"))
 ```
 
 

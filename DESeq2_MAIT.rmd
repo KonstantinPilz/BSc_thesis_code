@@ -33,7 +33,7 @@ library("tidyverse")
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 locale <- FALSE
-recompute <- 1
+recompute <- 0
 
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_DESeq2")
@@ -132,8 +132,9 @@ by excluding low count genes we reduce the memory usage of the later methods
 ```{r}
 keep <- rowSums(counts(dds_K12)) >= 10
 dds_K12 <- dds_K12[keep,]
+dds_K12
 ```
-reduced the genes from 100k to 150k
+reduced the genes from 200k to 150k
 
 -- Jana now gets more information on the genes, I'll skip this for now --
 
