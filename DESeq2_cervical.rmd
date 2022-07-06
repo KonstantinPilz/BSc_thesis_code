@@ -122,13 +122,13 @@ sampleDists gives distances
 creating plot with RColorBrewer and pheatmap
 ```{r}
 sampleDists <- dist(t(assay(rld)))
-#plot
-
 sampleDistMatrix <- as.matrix(sampleDists)
+
 rownames(sampleDistMatrix) <- paste(rld$condition)#paste(rld$colnames)
 colnames(sampleDistMatrix) <- colnames(rld)
 annotation <- data.frame(condition = class$condition)
 colors <- colorRampPalette(rev(brewer.pal(9, "Greys")))(255)
+
 pheatmap(sampleDistMatrix,
                      clustering_distance_rows = sampleDists,
                      clustering_distance_cols = sampleDists,
