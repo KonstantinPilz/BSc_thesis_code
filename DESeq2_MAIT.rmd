@@ -27,13 +27,13 @@ library("vsn")
 library("hexbin")
 library("pheatmap")
 library("RColorBrewer")
-library("ggplot2")
+#library("ggplot2")
 library("tidyverse")
 ```
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 locale <- FALSE
-recompute <- 0
+recompute <- 1
 
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_DESeq2")
@@ -108,10 +108,10 @@ file_dds_K12 <- file.path(data_dir, "02_dds_K12")
 if(recompute){
 
   design <- formula(~ condition)
-  dds_K12 <- DESeqDataSetFromHTSeqCount(sampleTable=sampleTable_K12_unstim,
+  dds_K12_raw <- DESeqDataSetFromHTSeqCount(sampleTable=sampleTable_K12_unstim,
                                   directory= data_dir,
                                   design=design)
-  save (dds_K12, file= file_dds_K12)
+  save (dds_K12_raw, file= file_dds_K12)
 
 
 } else {
@@ -119,7 +119,21 @@ if(recompute){
 }
 
 #look at object
+dds_K12_raw
+
+
+
+```
+throw out XLOC
+```{r}
+count <- assay(dds_K12_raw)
+sub <- count[-grep("XLO", rownames(count)), , drop = FALSE]
+
+dds_K12 <- DESeqDataSetFromMatrix(countData = sub,
+                              colData = sampleTable_K12_unstim,
+                              design = design)
 dds_K12
+save (dds_K12, file= file_dds_K12)
 
 ```
 
