@@ -95,13 +95,10 @@ ind <- sample(ncol(data), nTest, FALSE)
 
 # Minimum count is set to 1 in order to prevent 0 division problem within
 # classification models.
-data.train <- as.matrix(data[ ,-ind] + 4) #offset to make sure there is no malfunctioning
-#K# training data: all data except for ind -> 70% -> 40 samples
-data.test <- as.matrix(data[ ,ind] + 4)#K# all lines (genes) of the matrix, but only the columns specified in ind
-#K# test data: the remaining data -> ind -> 30% -> 18 samples
+data.train <- as.matrix(data[ ,-ind] + 1) #offset to make sure there is no malfunctioning
+data.test <- as.matrix(data[ ,ind] + 1)
 
-#?# Why this class type?
-#K# I think it contains the classification of each sample
+
 classtr <- DataFrame(condition = class[-ind, ])
 classts <- DataFrame(condition = class[ind, ])
 
