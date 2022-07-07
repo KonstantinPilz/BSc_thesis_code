@@ -97,7 +97,7 @@ rlog ~ regularized logarithm - normalizes on basis of library size and transform
 Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
-recompute <- 1
+recompute <- 0
 file_vsd <- file.path(results_dir, "03_vsd.Rdata")
 #file_rld <- file.path(data_dir, "04_rld.Rdata")
 if (recompute) {
@@ -133,13 +133,14 @@ vsd has the most even mean (could not do rld)
 sampleDists gives distances
 creating plot with RColorBrewer and pheatmap
 
-```{r}
+```{r lung heatmap}
 sampleDists <- dist(t(assay(vsd)))
 sampleDistMatrix <- as.matrix(sampleDists)
 
 rownames(sampleDistMatrix) <- paste(vsd$condition)
 colnames(sampleDistMatrix) <- colnames(vsd)
 annotation <- data.frame(condition =class$condition)
+save(annotation, file = file.path(results_dir, "annotation"))
 #rownames(annotation) <- rownames(sampleDistMatrix)
 colors <- colorRampPalette( rev(brewer.pal(9, "Greys")) )(255)
 # save heatmap in image file

@@ -126,10 +126,10 @@ ctrl.discrete <- discreteControl(method = "repeatedcv", number = 5, repeats = 10
 ctrl.voom <- voomControl(method = "repeatedcv", number = 3, repeats = 10,
                              tuneLength = 10)
 
-file_NSC <- file.path(data_dir, "02_NSC_off4.Rdata")
-file_plda <- file.path(data_dir, "03_plda_off4.Rdata")
-file_plda2<- file.path(data_dir, "04_plda2_off4.Rdata")
-file_voomNSC <- file.path(data_dir, "05_voomNSC_off4.Rdata")
+file_NSC <- file.path(data_dir, "02_NSC.Rdata")
+file_plda <- file.path(data_dir, "03_plda.Rdata")
+file_plda2<- file.path(data_dir, "04_plda2.Rdata")
+file_voomNSC <- file.path(data_dir, "05_voomNSC.Rdata")
 ```
 ```{r}
 if (recompute){

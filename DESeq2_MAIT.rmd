@@ -129,7 +129,16 @@ throw out XLOC
 count <- assay(dds_K12_raw)
 sub <- count[-grep("XLO", rownames(count)), , drop = FALSE]
 
-dds_K12 <- DESeqDataSetFromMatrix(countData = sub,
+#add gene names
+rownames(sub) <- sub("[.].*", "", rownames(sub))
+load("/data/bioinf/projects/data/2019_MAITcellRNAseq/de/withoutXLOC/RData/09c_res_c_CTRL_K12.RData")  # res_filtered
+new <- left_join(as_tibble(sub) %>% mutate("ensembl_gene_id"=rownames(sub)), bmTable)
+#make names unique
+new$external_gene_name <- sub('[.]', '_', make.names(new$external_gene_name, unique = TRUE))
+rownames(new) <- new$external_gene_name
+counts <- new[,1:10]
+rownames(counts) <- rownames(new)
+dds_K12 <- DESeqDataSetFromMatrix(countData = counts,
                               colData = sampleTable_K12_unstim,
                               design = design)
 dds_K12
@@ -148,9 +157,7 @@ keep <- rowSums(counts(dds_K12)) >= 10
 dds_K12 <- dds_K12[keep,]
 dds_K12
 ```
-reduced the genes from 200k to 150k
 
--- Jana now gets more information on the genes, I'll skip this for now --
 
 4. set factor levels
 It may be important to define in which order the conditions are compared. (default is alphabetical order)

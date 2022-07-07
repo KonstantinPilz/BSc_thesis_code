@@ -2,7 +2,7 @@
 title: "R Notebook"
 output: html_document
 ---
-```{r, eval = FALSE}
+```{r knitr, eval = FALSE}
 ## ----setup, echo=FALSE, results="hide"----------------------------------------
 knitr::opts_chunk$set(tidy = FALSE,
                       cache = FALSE,
@@ -13,7 +13,7 @@ knitr::opts_chunk$set(tidy = FALSE,
 ```
 1. load libraries
 
-```{r}
+```{r libraries}
 library("ggplot2")
 library("tidyverse")
 library("ggrepel")
@@ -21,7 +21,7 @@ library("DESeq2")
 library("pheatmap")
 ```
 3. define paths
-```{r}
+```{r paths}
 local <- 0
 prefix <- ifelse(local, "~", "")
 
@@ -37,7 +37,7 @@ dir_MAITM <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_MLS
 
 ```
 4. load cervical data
-```{r}
+```{r load cervical}
 recompute <- 1
 if(recompute){
 
@@ -82,7 +82,7 @@ if(recompute){
 }
 ```
 heatmap cervical
-```{r}
+```{r heatmap cervical}
 
 
 load( file= file.path(dir_cervicalD, "02b_rld.Rdata"))
@@ -118,7 +118,8 @@ ann_col <- list(
         vNSC= c("0" = "#f2f2f2", "1" = "blue"),
         PLDA2 = c("0" = "#f2f2f2", "1" = "red"),
         PLDA = c("0" = "#f2f2f2", "1" = "#4d390c"),
-        NSC = c("0" = "#f2f2f2", "1" = "purple")
+        NSC = c("0" = "#f2f2f2", "1" = "purple"),
+        condition= c(treated = "red", untreated = "green")
 )
 
 load(file =file.path(dir_cervicalD, "annotation"))
@@ -128,10 +129,11 @@ pheatmap(as,
          cluster_rows = TRUE,
          show_rownames = TRUE,
          show_colnames = FALSE,
-         cluster_cols = TRUE,
+         cluster_cols = FALSE,
          border_color = NA,
-         #height = 20,
+         height = 1200,
          cellheight = 10,
+         cellwidth = 10,
          treeheight_col = 0,
          annotation_colors = ann_col,
          annotation_col = annotation,
@@ -140,7 +142,7 @@ pheatmap(as,
 ```
 5. plot cervical data
 
-```{r}
+```{r volcano cervical}
 if(recompute){
 
 
@@ -165,7 +167,7 @@ ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=-log10(pvalue), col=pam)) +
 }
 ```
 lung
-```{r}
+```{r read in lung}
 recompute <- 1
 if(recompute){
 
@@ -208,7 +210,7 @@ load(file.path(dir_lungM, "10_vnsc.rda"))
 }
 ```
 heatmap lung
-```{r}
+```{r heatmap lung}
 #new column with information on number of classifiers that selected the gene
 #deseq2_mlseq$MLSeq <- deseq2_mlseq$pam + deseq2_mlseq$plda + deseq2_mlseq$plda2 + deseq2_mlseq$vnsc
 
@@ -244,12 +246,14 @@ row_anno_df <- data.frame(
         row.names = mlseq_data$gene_name)
 colnames(row_anno_df) <- c("-log10(p-value)", "NSC", "PLDA", "PLDA2", "vNSC")
 
+load(file = file.path(dir_lungD, "annotation"))
 
 ann_col <- list(
         vNSC= c("0" = "#f2f2f2", "1" = "blue"),
         PLDA2 = c("0" = "#f2f2f2", "1" = "red"),
         PLDA = c("0" = "#f2f2f2", "1" = "#4d390c"),
-        NSC = c("0" = "#f2f2f2", "1" = "purple")
+        NSC = c("0" = "#f2f2f2", "1" = "purple"),
+        condition = c(T1 = "red", T2 = "green")
 )
 
 as <- assay(vsd)[genes,]
@@ -257,13 +261,13 @@ pheatmap(as,
          cluster_rows = TRUE,
          show_rownames = TRUE,
          show_colnames = FALSE,
-         cluster_cols = TRUE,
+         cluster_cols = FALSE,
          border_color = NA,
          #height = 20,
          cellheight = 10,
          treeheight_col = 0,
          annotation_colors = ann_col,
-         # annotation_col = df,
+         annotation_col = annotation,
          annotation_row = row_anno_df
 )
 ```
@@ -271,7 +275,7 @@ pheatmap(as,
 
 plot lung data
 
-```{r}
+```{r volcano lung}
 recompute <- 1
 if(recompute){
 
@@ -345,7 +349,7 @@ if(recompute){
 }
 ```
 heatmap MAIT
-```{r}
+```{r heatmap MAIT}
 
 
 load( file= file.path(dir_MAITD, "03_vsd_K12.Rdata"))
@@ -417,17 +421,10 @@ if(recompute){
           geom_point() +
           theme_minimal() +
           #geom_text_repel() +
-          scale_color_manual(values=c( "orange", "red", "purple", "black")) +#keep colors constant - take out grey
+          scale_color_manual(values=c("grey", "orange", "red", "purple", "black")) +#keep colors constant - take out grey
           geom_vline(xintercept=c(-1, 1), col="red") +
           geom_hline(yintercept=-log10(0.05), col="red")
 
-  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=-log10(pvalue), col=pam)) +
-          geom_point() +
-          theme_minimal() +
-          #geom_text_repel() +
-          scale_color_manual(values=c( "grey", "orange", "red", "purple", "black")) +#keep colors constant - take out grey
-          geom_vline(xintercept=c(-1, 1), col="red") +
-          geom_hline(yintercept=-log10(0.05), col="red")
 
 }
 ```
