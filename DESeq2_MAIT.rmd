@@ -248,6 +248,7 @@ sampleDistMatrix <- as.matrix(sampleDists)
 rows <- match(rownames(sampleDistMatrix), rownames(sampleTable))
 annotation <- data.frame(treatment = sampleTable$treatment[rows])
 rownames(annotation) <- rownames(sampleDistMatrix)
+save(annotation, file = file.path(results_dir, "annotation"))
 # heatmap colors
 colors <- colorRampPalette( rev(brewer.pal(9, "Greys")) )(255)
 # save heatmap in image file
@@ -357,37 +358,4 @@ jpeg(file = file.path(graphics_dir, "06_counts_per_gene"))
 plotCounts(dds_K12, gene = which.min(res_K12$padj), intgroup = "condition")
 dev.off()
 
-```
-Heatmap
-```{r}
-recompute <- TRUE
-if (recompute)
-{
-dds_K12 <- estimateSizeFactors(dds_K12)
-select <- order(rowMeans(counts(dds_K12, normalized = TRUE)),
-decreasing = TRUE)[1:200]
-df <- as.data.frame(colData(dds_K12)[, c("condition")])
-rows <- match(rownames(sampleDistMatrix), rownames(sampleTable))
-annotation <- data.frame(treatment = sampleTable$treatment[rows])
-rownames(annotation) <- rownames(sampleDistMatrix)
-jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
-#saving the pheatmap is complex
-heatmap <- pheatmap(assay(vsd_K12)[select,],
-cluster_rows = TRUE,
-show_rownames = FALSE,
-cluster_cols = TRUE,
-annotation_col = annotation
-)
-
-save_pheatmap_pdf <- function(x, filename, width = 7, height = 7) {
-stopifnot(!missing(x))
-stopifnot(!missing(filename))
-pdf(filename, width = width, height = height)
-grid::grid.newpage()
-grid::grid.draw(x$gtable)
-dev.off()
-}
-save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_vsd_heatmap_K12.pdf"))
-dev.off()
-}
 ```
