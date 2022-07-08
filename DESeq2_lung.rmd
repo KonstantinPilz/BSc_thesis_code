@@ -109,7 +109,7 @@ if (recompute) {
   load(file = file_vsd)
   #load(file = file_rld)
 }
-head(assay(vsd), 3)
+#head(assay(vsd), 3)
 
 ```
 6. Plot showing dependence of sd on mean
@@ -149,39 +149,25 @@ file <- paste0(graphics_dir, "04_heatmap_s2s-distance.pdf")
 pheatmap(sampleDistMatrix,
          clustering_distance_rows=sampleDists,
          clustering_distance_cols=sampleDists,
-         treeheight_row = 20,
+         treeheight_row = 0,
          treeheight_col = 20,
          legend = T,
          cellwidth=10,
          cellheight=10,
+         height = 1000,
+         width = 1000,
          #annotation_row = annotation,
          annotation_col = annotation,
          #annotation_colors = ann_colors,
          show_colnames = T,
          show_rownames = F,
          #main=paste0("Sample-2-sample distance vsd-transformed\n"),
-         filename=file,
+         #filename=file,
          color=colors
 )
 
 ```
-```{r}
-#sampleDists <- dist(t(assay(vsd)))
-#plot
-if (recompute) {
-  sampleDistMatrix <- as.matrix(sampleDists)
-  rownames(sampleDistMatrix) <- paste(vsd$condition)
-  colnames(sampleDistMatrix) <- NULL
-  colors <- colorRampPalette(rev(brewer.pal(9, "Blues")))(255)
-  heatmap2 <- pheatmap(sampleDistMatrix,
-                     clustering_distance_rows = sampleDists,
-                     clustering_distance_cols = sampleDists,
-                     col = colors)
-  save_pheatmap_pdf(heatmap2, file.path(graphics_dir, "05_vsd_heatmap_sampledist.pdf"))
 
-}
-
-```
 9. PCA
 Shows samples in 2D plot, the axes representing their two principal components
 ```{r}
@@ -201,7 +187,7 @@ This method goes through all steps of DESeq2 and gives results.
 ```{r}
 start <- Sys.time()
 
-recompute <- 1
+recompute <- 0
 file_res <- file.path(results_dir, "03_res.Rdata")
 file_dds <- file.path(results_dir, "04_dds.Rdata")
 if (recompute) {

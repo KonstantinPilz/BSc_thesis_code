@@ -133,7 +133,7 @@ colors <- colorRampPalette(rev(brewer.pal(9, "Greys")))(255)
 pheatmap(sampleDistMatrix,
                      clustering_distance_rows = sampleDists,
                      clustering_distance_cols = sampleDists,
-                     treeheight_row = 20,
+                     treeheight_row = 0,
                      treeheight_col = 20,
                      legend = T,
                      cellwidth=10,
@@ -143,8 +143,9 @@ pheatmap(sampleDistMatrix,
                      #annotation_colors = ann_colors,
                      show_colnames = T,
                      show_rownames = F,
-                     filename = paste0(file.path(graphics_dir, "05_rld_heatmap_sampledist.pdf")),
-                     color = colors)
+                     #filename = paste0(file.path(graphics_dir, "05_rld_heatmap_sampledist.pdf")),
+                     color = colors
+)
 #save_pheatmap_pdf(heatmap, file.path(graphics_dir, "05_rld_heatmap_sampledist.pdf"))
 ```
 Observation: Sample 54, 15 and 29 look out of place
