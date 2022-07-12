@@ -1,0 +1,33 @@
+---
+title: "R Notebook"
+output: html_document
+---
+```{r knitr, eval = FALSE}
+## ----setup, echo=FALSE, results="hide"----------------------------------------
+knitr::opts_chunk$set(tidy = FALSE,
+                      cache = FALSE,
+                      dev = "png",
+                      message = FALSE,
+                      error = FALSE,
+                      warning = TRUE)
+```
+1. load libraries
+
+```{r libraries}
+library("ggplot2")
+library("tidyverse")
+#library("ggrepel")
+#library("DESeq2")
+#library("pheatmap")
+```
+table runtime
+```{r}
+runtime <- data.frame(
+        method=c("DESeq2", "MLSeq", "DESeq2", "MLSeq", "DESeq2", "MLSeq"),
+        source=rep(c("cervical", "lung", "MAIT"), each =2),
+        minutes=c(0.13, 0.18, 10.06, 30.97, 0.55, 3.70)
+ )
+
+g <- ggplot(data=runtime, aes(x=source, y=minutes, fill=method)) +
+geom_bar(stat="identity", color = "black", position=position_dodge())
+```

@@ -104,6 +104,7 @@ sampleTable_K12_unstim <- filter(sampleTable, condition=="K12" | condition=="16h
 
 ```
 ```{r}
+recompute <- 1
 file_dds_K12 <- file.path(data_dir, "02_dds_K12")
 if(recompute){
 
@@ -124,32 +125,36 @@ dds_K12_raw
 
 
 ```
-throw out XLOC
-```{r}
+exclude XLOC
+```{r exclude XLOC}
 count <- assay(dds_K12_raw)
 sub <- count[-grep("XLO", rownames(count)), , drop = FALSE]
 
 #add gene names
 rownames(sub) <- sub("[.].*", "", rownames(sub))
 load("/data/bioinf/projects/data/2019_MAITcellRNAseq/de/withoutXLOC/RData/09c_res_c_CTRL_K12.RData")  # res_filtered
+load("/data/bioinf/projects/data/2019_MAITcellRNAseq/de/withoutXLOC/RData/04_bmTable.RData")  # bmTable
 new <- left_join(as_tibble(sub) %>% mutate("ensembl_gene_id"=rownames(sub)), bmTable)
 #make names unique
 new$external_gene_name <- sub('[.]', '_', make.names(new$external_gene_name, unique = TRUE))
 rownames(new) <- new$external_gene_name
 counts <- new[,1:10]
 rownames(counts) <- rownames(new)
+
+#counts <- counts[-grep("NA_", rownames(counts)), , drop = FALSE]
+
 dds_K12 <- DESeqDataSetFromMatrix(countData = counts,
                               colData = sampleTable_K12_unstim,
                               design = design)
+#getting rid of 0 count genes (some artifact from joining)
+keep <- rowSums(counts(dds_K12)) > 0
+dds_K12 <- dds_K12[keep,]
 dds_K12
 save (dds_K12, file= file_dds_K12)
 
 ```
 
-Simplify sample names
-```{r}
-#excluded for now
-```
+
 3. Pre-filtering
 by excluding low count genes we reduce the memory usage of the later methods
 ```{r}
@@ -173,7 +178,7 @@ Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a 
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
 ### - takes >1 min so only recompute if necessary - ###
-recompute <- 1
+recompute <- 0
 
 file_vsd_K12 <- file.path(results_dir, "03_vsd_K12.Rdata")
 file_rld_K12 <- file.path(results_dir, "04_rld_K12.Rdata")
@@ -216,34 +221,6 @@ For K12 vsd has the most even mean!
 8. Heatmap of the sample-to-sample distances
 
 
-from Jana:
-```{r def.colors.samples}
-# the colors for the samples
-# condition -> oranges
-colCondition <- brewer.pal(n=4, name='Purples')
-names(colCondition) <- c("0h_Ctrl", "16h_Ctrl", "CD3-28", "K12")
-# treatment -> reds
-colSamples <- c("control" = "#FC9272", "treated" = "#DE2D26")
-# time -> blues
-colTime <- c("0h" = "#9ECAE1", "16h" = "#3182BD")
-#l <- length(unique(bmTable.combined$my_biotype))
-# the colors for the genes
-#colMyBiotypes <- brewer.pal(l, "Set1")
-#names(colMyBiotypes) <- unique(bmTable.combined$my_biotype)
-# define specific colors for the biotypes
-colMyBiotypes <- c(#"other_ncRNA"   = "#23872f", # green
-                   #"shortRNA"      = "#41f256", # pale green
-                   "protein_coding"= "#42f4ce", # turquoise
-                   "lncRNA"        = "#d81e1e", # red
-                   #"pseudogene"    = "#1e81d8", # lightblue
-                   "new_transcript" = "orange", #"#872323", # darkred
-                   "other"    = "gray80" #"#BDBDBD" # grey
-)
-ann_colors <- list(condition = colCondition,
-                   treatment = colSamples,
-                   time = colTime,
-                   biotype = colMyBiotypes)
-```
 
 
 
@@ -276,8 +253,8 @@ pheatmap(sampleDistMatrix,
          #annotation_colors = ann_colors,
          show_colnames = T,
          show_rownames = F,
-         main=paste0("Sample-2-sample distance of (rlog-)transformed count data\n"),
-         filename=file
+         #main=paste0("Sample-2-sample distance of (rlog-)transformed count data\n"),
+         #filename=file
 )
 
 ```
