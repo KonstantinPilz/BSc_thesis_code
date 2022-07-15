@@ -1,0 +1,3 @@
+Conda environment "MLseqEval" was created using this command:
+
+conda create -n MLseqEval -c conda-forge -c bioconda -c r r-base r-tidyverse r-svglite r-caret r-e1071 r-gridextra r-scales r-knitr r-ggpubr r-rcolorbrewer r-pheatmap r-venndiagram bioconductor-mlseq bioconductor-deseq2 r-ggbiplot r-ggdendro r-data.table r-kernlab r-hexbin bioconductor-vsn bioconductor-tximeta bioconductor-tximport bioconductor-pasilla bioconductor-tximportData bioconductor-apeglm bioconductor-reportingtools

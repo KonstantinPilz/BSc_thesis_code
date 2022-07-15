@@ -9,7 +9,7 @@ This is the analysis of the cervical data set provided by the authors of MLSeq.
 
 
 
-1. setup
+Setup
 ```{r}
 library(knitr)
 opts_chunk$set(tidy = FALSE,
@@ -20,7 +20,7 @@ opts_chunk$set(tidy = FALSE,
                cache = FALSE)
 
 ```
-libraries
+Libraries
 ```{r}
 library(MLSeq)
 library(DESeq2)
@@ -41,7 +41,7 @@ data_dir <- file.path(dir, "data/")
 results_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
-2. load data
+Load data
 
 ```{r}
 
@@ -55,7 +55,7 @@ class <- data.frame(condition = factor(rep(c("T1","T2"), c(576, 552))))
 colnames(lung) <- 1:1128
 class
 ```
-3. pre-filtering
+Pre-filtering
 The seed determines how the samples are randomized -> For reproducibility use same seed
 In particular it determines the variable ind
 We do not perform a differential expression analysis to select differentially expressed genes. However, in practice, DE analysis might be performed before fitting classifiers. Here, we selected top 100 features having the highest gene-wise variances in order to decrease computational cost.
@@ -67,7 +67,7 @@ vars <- sort(apply(lung, 1, var, na.rm = TRUE), decreasing = TRUE)
 data <- lung#[names(vars)[1:1000], ]
 head(data[ ,1:10])
 ```
-4. Split data into testing and training set
+Split data into testing and training set
 Since we want to build a classification model, we need training data.
 After training, we need more data to assess the performance
 
@@ -76,8 +76,8 @@ After training, we need more data to assess the performance
 #total runtime
 start_total <- Sys.time()
 
-nTest <- ceiling(ncol(data) * 0.3) #K# ncol: number of columns in an array
-ind <- sample(ncol(data), nTest, FALSE) #K# This is randomizing the samples
+nTest <- ceiling(ncol(data) * 0.3)
+ind <- sample(ncol(data), nTest, FALSE)
 
 # Minimum count is set to 1 in order to prevent 0 division problem within
 # classification models.
@@ -97,7 +97,7 @@ data.testS4 = DESeqDataSetFromMatrix(countData = data.test,
                                      design = formula(~condition))
 
 ```
-5. Training classifiers
+Training classifiers
 First, the data is normalized using one of four methods
 deseq-rlog: Normalization with deseq median ratio method.
 

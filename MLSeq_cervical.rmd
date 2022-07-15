@@ -9,7 +9,7 @@ This is the analysis of the cervical data set provided by the authors of MLSeq.
 
 
 
-1. setup
+Setup
 ```{r}
 library(knitr)
 opts_chunk$set(tidy = FALSE,
@@ -20,7 +20,7 @@ opts_chunk$set(tidy = FALSE,
                cache = FALSE)
 
 ```
-libraries
+Libraries
 ```{r}
 library(MLSeq)
 library(DESeq2)
@@ -41,7 +41,7 @@ data_dir <- file.path(dir, "data/")
 results_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
-2. load data
+Load pre-processed data (see DESeq2_cervical.rmd)
 
 ```{r}
 load("/data/bioinf/projects/data/2022_MLseq_KP/cervical_DESeq2/results/03_dds_pre_processed.Rdata")
@@ -52,10 +52,10 @@ head(cervical[ ,1:10]) # Mapped counts for first 6 features of 10 subjects.
 class <- data.frame(condition = factor(rep(c("N","T"), c(27, 28)))) #due to exclusion of 29(N), 54 (T) and 15 (N)
 class
 ```
-3. pre-filtering
+Pre-filtering
 The seed determines how the samples are randomized -> For reproducibility use same seed
 In particular it determines the variable ind
--- not done in this analysis --
+
 ```{r}
 set.seed(2128)
 
@@ -64,7 +64,7 @@ vars <- sort(apply(cervical, 1, var, na.rm = TRUE), decreasing = TRUE)#sorting b
 data <- cervical#[names(vars)[1:100], ]
 head(data[ ,1:10])
 ```
-4. Split data into testing and training set
+Split data into testing and training set
 Since we want to build a classification model, we need training data.
 After training, we need more data to assess the performance
 
@@ -74,18 +74,14 @@ left for testing. A single unit missclassification, which the model is
 sensitive to would result in an accuracy loss of 17%
 ```{r}
 start <- Sys.time()
-nTest <- ceiling(ncol(data) * 0.3) #K# ncol: number of columns in an array
-ind <- sample(ncol(data), nTest, FALSE) #K# This is randomizing the samples
+nTest <- ceiling(ncol(data) * 0.3)
+ind <- sample(ncol(data), nTest, FALSE) #This is randomizing the samples
 
 # Minimum count is set to 1 in order to prevent 0 division problem within
 # classification models.
-data.train <- as.matrix(data[ ,-ind] + 1) #K# ind is a collection of nTest samples
-#K# training data: all data except for ind -> 70% -> 40 samples
-data.test <- as.matrix(data[ ,ind] + 1)#K# all lines (genes) of the matrix, but only the columns specified in ind
-#K# test data: the remaining data -> ind -> 30% -> 18 samples
+data.train <- as.matrix(data[ ,-ind] + 1)
+data.test <- as.matrix(data[ ,ind] + 1)
 
-#?# Why this class type?
-#K# I think it contains the classification of each sample
 classtr <- DataFrame(condition = class[-ind, ])
 classts <- DataFrame(condition = class[ind, ])
 
@@ -98,11 +94,11 @@ data.testS4 = DESeqDataSetFromMatrix(countData = data.test,
                                      design = formula(~condition))
 
 ```
-5. Training classifiers
+Training classifiers
 First, the data is normalized using one of four methods
 deseq-rlog: Normalization with deseq median ratio method.
 
-6. 93 training methods can be used to train classifiers
+93 training methods can be used to train classifiers
 > availableMethods() to see them
 
 Train all the sparse classifiers
@@ -174,7 +170,7 @@ show(fit.plda)
 show(fit.plda2)
 show(fit.voomNSC)
 ```
-venn diagram of selected features by sparse classifiers
+Venn diagram of selected features by sparse classifiers
 ```{r}
 common <- tmp.list[[1]]
 for (i in 2:(length(tmp.list))){
