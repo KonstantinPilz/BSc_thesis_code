@@ -33,7 +33,7 @@ library(caret)
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 local <- FALSE
-recompute <- 0
+recompute <- 1
 
 prefix <- ifelse(local, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/lung_MLSeq")
@@ -71,10 +71,7 @@ head(data[ ,1:10])
 Since we want to build a classification model, we need training data.
 After training, we need more data to assess the performance
 
-It is important to split the data in a good ratio. Default is 70% training.
-If we set it to e.g. 90% for this small sample, there would be only 6 samples
-left for testing. A single unit missclassification, which the model is
-sensitive to would result in an accuracy loss of 17%
+
 ```{r}
 #total runtime
 start_total <- Sys.time()
@@ -84,13 +81,10 @@ ind <- sample(ncol(data), nTest, FALSE) #K# This is randomizing the samples
 
 # Minimum count is set to 1 in order to prevent 0 division problem within
 # classification models.
-data.train <- as.matrix(data[ ,-ind] + 1) #K# ind is a collection of nTest samples
-#K# training data: all data except for ind -> 70% -> 40 samples
-data.test <- as.matrix(data[ ,ind] + 1)#K# all lines (genes) of the matrix, but only the columns specified in ind
-#K# test data: the remaining data -> ind -> 30% -> 18 samples
+data.train <- as.matrix(data[ ,-ind] + 1)
+data.test <- as.matrix(data[ ,ind] + 1)
 
-#?# Why this class type?
-#K# I think it contains the classification of each sample
+
 classtr <- DataFrame(condition = class[-ind, ])
 classts <- DataFrame(condition = class[ind, ])
 
@@ -106,9 +100,6 @@ data.testS4 = DESeqDataSetFromMatrix(countData = data.test,
 5. Training classifiers
 First, the data is normalized using one of four methods
 deseq-rlog: Normalization with deseq median ratio method.
-
-6. 93 training methods can be used to train classifiers
-> availableMethods() to see them
 
 Train all the sparse classifiers
 
@@ -170,7 +161,7 @@ if (recompute){
 print("done")
 ```
 ```{r}
-
+recompute <- 1
 
 if (recompute){
   #voom-based

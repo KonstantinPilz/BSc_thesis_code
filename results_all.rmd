@@ -133,7 +133,7 @@ pheatmap(as,
          border_color = NA,
          height = 1200,
          cellheight = 10,
-         cellwidth = 10,
+         cellwidth = 2,
          treeheight_col = 0,
          annotation_colors = ann_col,
          annotation_col = annotation,
@@ -289,6 +289,7 @@ if(recompute){
           geom_vline(xintercept=c(-1, 1), col="red") +
           geom_hline(yintercept=-log10(0.05), col="red")
 }
+#optional: Heatmap for a single classifier
 recompute <- 0
 if(recompute){
 

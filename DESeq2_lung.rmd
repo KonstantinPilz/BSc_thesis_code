@@ -10,7 +10,7 @@ This is the analysis of the lung data set provided by the authors of MLSeq using
 
 
 
-1. setup
+Setup
 
 ```{r, eval = FALSE}
 ## ----setup, echo=FALSE, results="hide"----------------------------------------
@@ -32,7 +32,7 @@ library("ggplot2")
 Making it possible to run both on local machine as well as on cluster
 ```{r}
 locale <- FALSE
-recompute <- 0
+recompute <- 1
 
 prefix <- ifelse(locale, "~", "")
 dir <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/lung_DESeq2")
@@ -40,28 +40,34 @@ data_dir <- file.path(dir, "data/")
 results_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
-2. load and read file
+Load and read file
 The lung data set is a count matrix, to use it in DESeq2 analysis we use the method "DESeqDataSetFromMatrix" which expects the following inputs:
 A) The count matrix
 B) A data.frame/ DataFrame object
-C) A design argument that I don't fully understand but which seems to be necessary
-Since there is no data.frame object provided for the lung data, we need to provide it. To do so, we create a table containing one column for the sample number and one column for the treatment. The first 29 samples are controls, the last 29 are treated.
+C) A design argument
+Since there is no data.frame object provided for the lung data, we need to provide it. To do so, we create a table containing one column for the sample number and one column for the treatment.
 ```{r}
+recompute <- 0
 file <- file.path(data_dir, "lung.csv")
 file_lung <- file.path(data_dir, "01_lung.Rdata")
 if(recompute){
-  lung <- read.csv(input,  sep=" ")
+  lung <- read.csv(file,  sep=" ")
   save(lung, file = file_lung)
 } else {
   load(file_lung)
 }
+recompute <- 1
+#the first 29 genes of the dataset are unannotated so I remove them
+lung <- lung[30:20531, ]
+
+#I furthermore remove the numbers in the gene names
+name <- sub("[|].*", "", (rownames(lung)))
+rownames(lung) <- make.names(name, unique = TRUE)
 #creating the data.frame object
 #lung data has 576 samples in T1 and 552 in T2.
 class <- data.frame(condition = factor(rep(c("T1","T2"), c(576, 552))))
 colnames(lung) <- 1:1128 #replacing name of columns so they match data.frame
-#optional: check data.frame object and beginning of the data
-#class
-#head(lung)
+
 #read the data into a DESeqDataSet
 file_dds <- file.path(data_dir, "02_dds.Rdata")
 if (recompute){
@@ -77,31 +83,30 @@ if (recompute){
 dds
 
 ```
-3. Pre-filtering
+Pre-filtering
 by excluding low count genes we reduce the memory usage of the later methods
 ```{r}
 keep <- rowSums(counts(dds)) >= 10
 dds <- dds[keep,]
 ```
-This reduced genes from 20500 to 20100 -> not very impressive
+This reduced genes from 20500 to 20100
 
-4. set factor levels
+set factor levels
 It may be important to define in which order the conditions are compared. (default is alphabetical order)
 ```{r}
 dds$condition <- factor(dds$condition, levels = c("T1","T2"))
 ```
 The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
 5. rlog-transformation
-For visualization and clustering instead. Main point is to remove the high variance for low means
-rlog ~ regularized logarithm - normalizes on basis of library size and transforms data to log2 scale
 Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
 (For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
 ```{r}
-recompute <- 0
+recompute <- 1
 file_vsd <- file.path(results_dir, "03_vsd.Rdata")
 #file_rld <- file.path(data_dir, "04_rld.Rdata")
 if (recompute) {
   vsd <- varianceStabilizingTransformation(dds, blind = FALSE)
+  #rld takes incredibly long for this dataset, so I'm using the vst instead here
   #rld <- rlog(dds, blind = FALSE)
   save(vsd, file = file_vsd)
   #save(rld, file = file_rld)
@@ -117,9 +122,7 @@ if (recompute) {
 #plot of sd and mean
 ntd <- normTransform(dds)
 
-jpeg(file = file.path(graphics_dir, "01_ntd_meanSd.jpeg"))
-meanSdPlot(assay(ntd))
-dev.off()
+
 #jpeg(file = file.path(graphics_dir, "02_rld_meanSd.jpeg"))
 #meanSdPlot(assay(rld))
 #dev.off()
@@ -133,7 +136,7 @@ vsd has the most even mean (could not do rld)
 sampleDists gives distances
 creating plot with RColorBrewer and pheatmap
 
-```{r lung heatmap}
+```{r lung s2s}
 sampleDists <- dist(t(assay(vsd)))
 sampleDistMatrix <- as.matrix(sampleDists)
 
@@ -168,7 +171,7 @@ pheatmap(sampleDistMatrix,
 
 ```
 
-9. PCA
+PCA
 Shows samples in 2D plot, the axes representing their two principal components
 ```{r}
 
@@ -182,12 +185,12 @@ Save dds for MLSeq analysis
 save(dds, file = file.path(results_dir, "03_dds_pre_processed.Rdata"))
 ```
 
-13. Standard differential expression analysis
+Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
 start <- Sys.time()
 
-recompute <- 0
+recompute <- 1
 file_res <- file.path(results_dir, "03_res.Rdata")
 file_dds <- file.path(results_dir, "04_dds.Rdata")
 if (recompute) {
@@ -224,7 +227,7 @@ res05 <- results(dds, alpha = 0.05)
 summary(res05)
 sum(res05$padj < 0.05, na.rm = TRUE)
 ```
-16. Export the list of genes that pass p-value (adjusted with Benjamini-Hochberg procedure
+16. Export the list of genes that pass p-value (adjusted with Benjamini-Hochberg procedure)
 ```{r}
 resSig <- subset(resOrdered, padj < 0.1)
 resSig
@@ -234,43 +237,4 @@ write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "07_results_a
 runtime <- Sys.time() - start
 capture.output(runtime, file = file.path(results_dir, "08_runtime.txt"))
 print("done")
-```
-(optional) Independent hypothesis weighting
-14. MA-plot
-#```{r}
-plotMA(res, ylim = c(-2, 2))
-```
-
-
-Same plot for shrunken log2 fold changes (removes noise)
-#```{r}
-plotMA(resLFC, ylim = c(-2, 2))
-```
-Does not work due to Error in 12
-15. Plot counts for individual genes
-#```{r}
-plotCounts(dds, gene = which.min(res$padj), intgroup = "condition")
-```
-7. Heatmap
-We need to first estimate the size factors to make it work
-#```{r}
-
-dds <- estimateSizeFactors(dds)
-select <- order(rowMeans(counts(dds, normalized = TRUE)),
-                decreasing = TRUE)[1:20]
-df <- as.data.frame(colData(dds)[, c("condition")])
-#jpeg(file="/home/pilz/data/graphics/heatmap.jpeg")
-#saving the pheatmap is complex
-heatmap <- pheatmap(assay(vsd)[select,], cluster_rows = FALSE, show_rownames = FALSE,
-                    cluster_cols = FALSE, annotation_col = df)
-save_pheatmap_pdf <- function(x, filename, width = 70, height = 70) {
-  stopifnot(!missing(x))
-  stopifnot(!missing(filename))
-  pdf(filename, width = width, height = height)
-  grid::grid.newpage()
-  grid::grid.draw(x$gtable)
-  dev.off()
-}
-save_pheatmap_pdf(heatmap, file.path(graphics_dir, "04_vsd_heatmap.pdf"))
-#dev.off()
 ```

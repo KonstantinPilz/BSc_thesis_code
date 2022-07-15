@@ -41,7 +41,7 @@ data_dir <- file.path(dir, "data/")
 results_dir <- file.path(dir, "results/")
 graphics_dir <- file.path(dir, "graphics/")
 ```
-2. load and read file
+Load and read file
 Roughly following the script https://git.ufz.de/rnaseq/2018_maitcellsrnaseq/-/blob/main/DE_Analysis/01_DESeq2.Rmd
 ```{r}
 count_files <- list.files(path=data_dir, pattern=".txt", full.names=TRUE)#all files
@@ -155,7 +155,7 @@ save (dds_K12, file= file_dds_K12)
 ```
 
 
-3. Pre-filtering
+Pre-filtering
 by excluding low count genes we reduce the memory usage of the later methods
 ```{r}
 keep <- rowSums(counts(dds_K12)) >= 10
@@ -164,18 +164,15 @@ dds_K12
 ```
 
 
-4. set factor levels
+Set factor levels
 It may be important to define in which order the conditions are compared. (default is alphabetical order)
 not sure if this is needed here. Might return later
 ```{r}
 #dds$condition <- factor(dds$condition, levels = c("T1","T2"))
 ```
 The following steps are to visualize and cluster the data. For this process a transformed version of the data is useful.
-5. rlog-transformation
-You do this if you don't want to do DE but visualization and clustering instead. Main point is to remove the high variance for low means
-rlog ~ regularized logarithm - normalizes on basis of library size and transforms data to log2 scale
-Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a regularized logarithm transformation (rlog), which behaves similarly to a log2 transformation for genes with high counts, while shrinking together the values for different samples for genes with low counts. It therefore avoids a commonly observed property of the standard logarithm transformation, the spreading apart of data for genes with low counts, where random noise is likely to dominate any biologically meaningful signal.
-(For a big number of samples there is an alternative: VST ~  variance stabilizing transformation)
+rlog-transformation
+
 ```{r}
 ### - takes >1 min so only recompute if necessary - ###
 recompute <- 0
@@ -194,17 +191,14 @@ if (recompute) {
 head(assay(rld_K12), 3)
 
 ```
-6. Plot showing dependence of sd on mean
+Plot showing dependence of sd on mean
 ```{r}
 #plot of sd and mean
 ntd_K12 <- normTransform(dds_K12)
 recompute <- 0
 if(recompute){
 
-  meanSdPlot(assay(ntd_K12))
-  jpeg(file = file.path(graphics_dir, "01_ntd_meanSd_K12.jpeg"))
-  meanSdPlot(assay(ntd_K12))
-  dev.off()
+
   meanSdPlot(assay(rld_K12))
   jpeg(file = file.path(graphics_dir, "02_rld_meanSd_K12.jpeg"))
   meanSdPlot(assay(rld_K12))
@@ -218,7 +212,7 @@ if(recompute){
 ```
 For K12 vsd has the most even mean!
 
-8. Heatmap of the sample-to-sample distances
+Heatmap of the sample-to-sample distances
 
 
 
@@ -260,12 +254,7 @@ pheatmap(sampleDistMatrix,
 ```
 
 
-looks as expected
-
-An additional heatmap that I have not yet understood. Will not include it for now.
-
-
-9. PCA
+PCA
 Shows samples in 2D plot, the axes representing their two principal components
 ```{r}
 
@@ -279,8 +268,7 @@ Clustering is completed.
 ```{r}
 save(dds_K12, file = file.path(results_dir, "05_dds_pre_processed.Rdata"))
 ```
-
-13. Standard differential expression analysis
+Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
 recompute <- 1
@@ -302,14 +290,14 @@ if (recompute) {
 res_K12
 ```
 
-12. Perform LFC transformation
+Perform LFC transformation
 For better visualization and gene ranking we use the method lfcShrink
 ```{r}
 resultsNames(dds_K12)
 resLFC <- lfcShrink(dds_K12, coef = "condition_K12_vs_16h_Ctrl", type = "apeglm")
 resLFC
 ```
-13. Table ordered by p-value
+Table ordered by p-value
 For a better overview we can order the table by p-value and give a summary of how many p-values were <0.1
 Finally, we can get a results table.
 ```{r}
@@ -325,7 +313,7 @@ sum(res05_K12$padj < 0.05, na.rm = TRUE)
 ```
 
 
-16. Export the list of genes that pass p-value
+Export the list of genes that pass p-value
 
 ```{r}
 resSig_K12 <- subset(resOrdered_K12, padj < 0.1)
@@ -335,11 +323,4 @@ write.csv(as.data.frame(resOrdered_K12), file = file.path(results_dir, "09_resul
 #runtime
 runtime <- Sys.time() - start
 capture.output(runtime, file = file.path(results_dir, "10_runtime.txt"))
-```
-15. Plot counts for individual genes
-#```{r}
-jpeg(file = file.path(graphics_dir, "06_counts_per_gene"))
-plotCounts(dds_K12, gene = which.min(res_K12$padj), intgroup = "condition")
-dev.off()
-
 ```
