@@ -19,6 +19,7 @@ library("tidyverse")
 library("ggrepel")
 library("DESeq2")
 library("pheatmap")
+library("scales")
 ```
 3. define paths
 ```{r paths}
@@ -36,6 +37,17 @@ dir_MAITM <- file.path(prefix, "data/bioinf/projects/data/2022_MLseq_KP/MAIT_MLS
 
 
 ```
+Function to reverse log 10 in ggplot (needed for volcano plots later) from: https://stackoverflow.com/questions/11053899/how-to-get-a-reversed-log10-scale-in-ggplot2
+```{r}
+reverselog_trans <- function(base = exp(1)) {
+  trans <- function(x) -log(x, base)
+  inv <- function(x) base^(-x)
+  trans_new(paste0("reverselog-", format(base)), trans, inv,
+            log_breaks(base = base),
+            domain = c(1e-100, Inf))
+}
+```
+
 4. load cervical data
 ```{r load cervical}
 recompute <- 1
@@ -145,24 +157,15 @@ pheatmap(as,
 ```{r volcano cervical}
 if(recompute){
 
-
-
-
-  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=-log10(pvalue), col=MLSeq)) +
+  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=pvalue, col=MLSeq)) +
+          scale_y_continuous(trans = reverselog_trans(base = 10)) +
           geom_point() +
           theme_minimal() +
           #geom_text_repel() +
           scale_color_manual(values=c( "orange", "red", "purple", "black")) +#keep colors constant - take out grey
           geom_vline(xintercept=c(-1, 1), col="red") +
-          geom_hline(yintercept=-log10(0.05), col="red")
-
-ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=-log10(pvalue), col=pam)) +
-          geom_point() +
-          theme_minimal() +
-          #geom_text_repel() +
-          scale_color_manual(values=c( "grey", "orange", "red", "purple", "black")) +#keep colors constant - take out grey
-          geom_vline(xintercept=c(-1, 1), col="red") +
-          geom_hline(yintercept=-log10(0.05), col="red")
+          geom_hline(yintercept=0.05, col="red")+
+          geom_hline(yintercept=0.01, col="red")
 
 }
 ```
@@ -281,7 +284,8 @@ if(recompute){
 
 
 
-  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=-log10(pvalue), col=MLSeq)) +
+  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=pvalue, col=MLSeq)) +
+          scale_y_continuous(trans = reverselog_trans(base = 10)) +
           geom_point() +
           theme_minimal() +
           #geom_text_repel() +
@@ -299,7 +303,8 @@ if(recompute){
           #geom_text_repel() +
           scale_color_manual(values=c("grey", "orange", "red", "purple")) +
           geom_vline(xintercept=c(-1, 1), col="red") +
-          geom_hline(yintercept=-log10(0.05), col="red")
+          geom_hline(yintercept=-log10(0.05), col="red") +
+          geom_hline(yintercept=-log10(0.01), col="red")
 }
 ```
 
@@ -418,13 +423,15 @@ if(recompute){
 
 
 
-  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=-log10(pvalue), col=MLSeq)) +
+  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=pvalue, col=MLSeq)) +
+          scale_y_continuous(trans = reverselog_trans(base = 10)) +
           geom_point() +
           theme_minimal() +
           #geom_text_repel() +
           scale_color_manual(values=c("grey", "orange", "red", "purple", "black")) +#keep colors constant - take out grey
           geom_vline(xintercept=c(-1, 1), col="red") +
-          geom_hline(yintercept=-log10(0.05), col="red")
+          geom_hline(yintercept=-log10(0.05), col="red") +
+          geom_hline(yintercept=-log10(0.01), col="red")
 
 
 }

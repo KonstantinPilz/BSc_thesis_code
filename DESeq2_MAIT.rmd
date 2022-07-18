@@ -102,6 +102,7 @@ names(sampleTable)
 
 sampleTable_K12_unstim <- filter(sampleTable, condition=="K12" | condition=="16h_Ctrl")#table for a subset -> only K12 vs unstim
 
+
 ```
 ```{r}
 recompute <- 1
@@ -222,9 +223,14 @@ Heatmap of the sample-to-sample distances
 sampleDists <- dist(t(assay(vsd_K12)))
 sampleDistMatrix <- as.matrix(sampleDists)
 
+#row.names(sampleTable) <- c("T_A", "C_A", "T_D", "C_D", "T_B", "C_B", "T_C", "C_C", "T_E", "C_E")
 # annotation of rows
 rows <- match(rownames(sampleDistMatrix), rownames(sampleTable))
 annotation <- data.frame(treatment = sampleTable$treatment[rows])
+
+#rownames(annotation) <- rownames(sampleDistMatrix)
+row.names(sampleDistMatrix) <- c("T1", "C1", "T4", "C4", "T2", "C2", "T3", "C3", "T5", "C5")
+colnames(sampleDistMatrix) <- c("T1", "C1", "T4", "C4", "T2", "C2", "T3", "C3", "T5", "C5")
 rownames(annotation) <- rownames(sampleDistMatrix)
 save(annotation, file = file.path(results_dir, "annotation"))
 # heatmap colors
@@ -234,19 +240,19 @@ file <- paste0(graphics_dir, "05_heatmap_s2s-distance_K12.pdf")
 #jpeg("pheatmap.jpg")
 pheatmap(sampleDistMatrix,
          color=colors,
-         border_color = NA,
+         #border_color = NA,
          clustering_distance_rows=sampleDists,
          clustering_distance_cols=sampleDists,
          treeheight_row = 20,
          treeheight_col = 20,
-         legend = T,
          cellwidth=25,
          cellheight=25,
          #annotation_row = annotation,
          annotation_col = annotation,
          #annotation_colors = ann_colors,
+         legend = F,
          show_colnames = T,
-         show_rownames = F,
+         show_rownames = T,
          #main=paste0("Sample-2-sample distance of (rlog-)transformed count data\n"),
          #filename=file
 )
