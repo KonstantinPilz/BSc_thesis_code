@@ -277,13 +277,14 @@ save(dds_K12, file = file.path(results_dir, "05_dds_pre_processed.Rdata"))
 Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
-recompute <- 1
-# runtime
-start <- Sys.time()
+recompute <- 0
+
 
 file_res_K12 <- file.path(results_dir, "06_res_K12.Rdata")
 file_dds_K12 <- file.path(results_dir, "07_dds_K12.Rdata")
 if (recompute) {
+  # runtime
+  start <- Sys.time()
   dds_K12 <- DESeq(dds_K12)
   res_K12 <- results(dds_K12)
   save(dds_K12, file = file_dds_K12)
@@ -313,9 +314,9 @@ summary(res_K12)
 #How many below 0.1?
 sum(res_K12$padj < 0.1, na.rm = TRUE)
 #results table
-res05_K12 <- results(dds_K12, alpha = 0.05)
+res05_K12 <- results(dds_K12, alpha = 0.01)
 summary(res05_K12)
-sum(res05_K12$padj < 0.05, na.rm = TRUE)
+sum(res05_K12$padj < 0.01, na.rm = TRUE)
 ```
 
 
@@ -327,6 +328,8 @@ resSig_K12
 write.csv(as.data.frame(resSig_K12), file = file.path(results_dir, "08_results_K12_p01_no_exclusion"))
 write.csv(as.data.frame(resOrdered_K12), file = file.path(results_dir, "09_results_all.csv"))
 #runtime
-runtime <- Sys.time() - start
+if(recompute){
+  runtime <- Sys.time() - start
+}
 capture.output(runtime, file = file.path(results_dir, "10_runtime.txt"))
 ```

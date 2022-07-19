@@ -103,18 +103,21 @@ Quote from DESeq2 paper: we use the shrinkage approach of DESeq2 to implement a 
 ```{r}
 recompute <- 1
 file_vsd <- file.path(results_dir, "03_vsd.Rdata")
-#file_rld <- file.path(data_dir, "04_rld.Rdata")
+file_rld <- file.path(data_dir, "04_rld.Rdata")
 if (recompute) {
   vsd <- varianceStabilizingTransformation(dds, blind = FALSE)
-  #rld takes incredibly long for this dataset, so I'm using the vst instead here
-  #rld <- rlog(dds, blind = FALSE)
+   #rld takes incredibly long for this dataset, so I'm using the vst instead here
+  x <- Sys.time()
+  rld <- rlog(dds, blind = FALSE)
+  time_rld <- Sys.time()-x
+  print(time_rld)
   save(vsd, file = file_vsd)
-  #save(rld, file = file_rld)
+  save(rld, file = file_rld)
 } else {
   load(file = file_vsd)
   #load(file = file_rld)
 }
-#head(assay(vsd), 3)
+head(assay(rld), 3)
 
 ```
 6. Plot showing dependence of sd on mean
@@ -123,9 +126,9 @@ if (recompute) {
 ntd <- normTransform(dds)
 
 
-#jpeg(file = file.path(graphics_dir, "02_rld_meanSd.jpeg"))
-#meanSdPlot(assay(rld))
-#dev.off()
+jpeg(file = file.path(graphics_dir, "02_rld_meanSd.jpeg"))
+meanSdPlot(assay(rld))
+dev.off()
 jpeg(file = file.path(graphics_dir, "03_vsd_meanSd.jpeg"))
 meanSdPlot(assay(vsd))
 dev.off()
@@ -188,12 +191,13 @@ save(dds, file = file.path(results_dir, "03_dds_pre_processed.Rdata"))
 Standard differential expression analysis
 This method goes through all steps of DESeq2 and gives results.
 ```{r}
-start <- Sys.time()
 
-recompute <- 1
+
+recompute <- 0
 file_res <- file.path(results_dir, "03_res.Rdata")
 file_dds <- file.path(results_dir, "04_dds.Rdata")
 if (recompute) {
+  start <- Sys.time()
   dds <- DESeq(dds)
   res <- results(dds)
   save(dds, file = file_dds)
@@ -223,9 +227,9 @@ summary(res)
 #How many below 0.1?
 sum(res$padj < 0.1, na.rm = TRUE)
 #results table
-res05 <- results(dds, alpha = 0.05)
+res05 <- results(dds, alpha = 0.01)
 summary(res05)
-sum(res05$padj < 0.05, na.rm = TRUE)
+#sum(res05$padj < 0.05, na.rm = TRUE)
 ```
 16. Export the list of genes that pass p-value (adjusted with Benjamini-Hochberg procedure)
 ```{r}
@@ -234,7 +238,9 @@ resSig
 write.csv(as.data.frame(resSig), file = file.path(results_dir, "03_results_lung_p01"))
 write.csv(as.data.frame(resOrdered), file = file.path(results_dir, "07_results_all.csv"))
 #runtime
-runtime <- Sys.time() - start
+if(recompute){
+  runtime <- Sys.time() - start
+}
 capture.output(runtime, file = file.path(results_dir, "08_runtime.txt"))
 print("done")
 ```
