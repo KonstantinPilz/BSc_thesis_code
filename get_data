@@ -4,3 +4,4 @@ wget https://github.com/gokmenzararsiz/MLSeq/blob/master/data/cervical.rda
 
 #lung cancer data was sent via one-time download link
 #MAIT data was provided internally on the UFZ compute cluster
+#all data has been archived and can be provided upon request
