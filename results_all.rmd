@@ -88,9 +88,9 @@ if(recompute){
   deseq2_mlseq$vnsc <- as.factor(deseq2_mlseq$vnsc)
 
   #add log10 pvalue
-  deseq2_mlseq$log10_pvalue <- -log10(deseq2_mlseq$pvalue)
+  deseq2_mlseq$log10_pvalue <- -log10(deseq2_mlseq$padj)
 
-
+  names(deseq2_mlseq)[names(deseq2_mlseq) == "padj"] <- "adjusted_pvalue"
 }
 ```
 heatmap cervical
@@ -123,7 +123,7 @@ row_anno_df <- data.frame(
         mlseq_data$plda2,
         mlseq_data$vnsc,
         row.names = mlseq_data$gene_name)
-colnames(row_anno_df) <- c("-log10(p-value)", "NSC", "PLDA", "PLDA2", "vNSC")
+colnames(row_anno_df) <- c("-log10(adjusted p-value)", "NSC", "PLDA", "PLDA2", "vNSC")
 
 
 ann_col <- list(
@@ -157,7 +157,7 @@ pheatmap(as,
 ```{r volcano cervical}
 if(recompute){
 
-  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=pvalue, col=MLSeq)) +
+  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=adjusted_pvalue, col=MLSeq)) +
           scale_y_continuous(trans = reverselog_trans(base = 10)) +
           geom_point() +
           theme_minimal() +
@@ -179,6 +179,7 @@ if(recompute){
           select(-`...1`)
   results %>% head()
   results[1:39, 5] <- 2.23e-308
+  results[1:39, 6] <- 2.23e-308
 
 load(file.path(dir_lungM, "07_pam.rda"))
 load(file.path(dir_lungM, "08_plda.rda"))
@@ -219,7 +220,9 @@ heatmap lung
 
 
 #add log10 pvalue
-deseq2_mlseq$log10_pvalue <- -log10(deseq2_mlseq$pvalue)
+deseq2_mlseq$log10_pvalue <- -log10(deseq2_mlseq$padj)
+
+names(deseq2_mlseq)[names(deseq2_mlseq) == "padj"] <- "adjusted_pvalue"
 
 load( file= file.path(dir_lungD, "03_vsd.Rdata"))
 #vsd
@@ -284,7 +287,7 @@ if(recompute){
 
 
 
-  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=pvalue, col=MLSeq)) +
+  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=adjusted_pvalue, col=MLSeq)) +
           scale_y_continuous(trans = reverselog_trans(base = 10)) +
           geom_point() +
           theme_minimal() +
@@ -297,7 +300,8 @@ if(recompute){
 recompute <- 0
 if(recompute){
 
-  ggplot(data=deseq2_mlseq, aes(x=MLSeq, y=-log10(pvalue))) +
+  ggplot(data=deseq2_mlseq, aes(x=MLSeq, y=adjusted_pvalue)) +
+          scale_y_continuous(trans = reverselog_trans(base = 10)) +
           geom_point() +
           theme_minimal() +
           #geom_text_repel() +
@@ -319,6 +323,7 @@ if(recompute){
           select(-`...1`)
   results %>% head()
   results[1, 5] <- 2.23e-308
+  results[1, 6] <- 2.23e-308
 
   load(file.path(dir_MAITM, "07_pam.rda"))
   load(file.path(dir_MAITM, "08_plda.rda"))
@@ -349,7 +354,10 @@ if(recompute){
   deseq2_mlseq$vnsc <- as.factor(deseq2_mlseq$vnsc)
 
   #add log10 pvalue
-  deseq2_mlseq$log10_pvalue <- -log10(deseq2_mlseq$pvalue)
+  deseq2_mlseq$log10_pvalue <- -log10(deseq2_mlseq$padj)
+
+  names(deseq2_mlseq)[names(deseq2_mlseq) == "padj"] <- "adjusted_pvalue"
+
 
 
 }
@@ -423,7 +431,7 @@ if(recompute){
 
 
 
-  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=pvalue, col=MLSeq)) +
+  ggplot(data=deseq2_mlseq, aes(x=log2FoldChange, y=adjusted_pvalue, col=MLSeq)) +
           scale_y_continuous(trans = reverselog_trans(base = 10)) +
           geom_point() +
           theme_minimal() +
